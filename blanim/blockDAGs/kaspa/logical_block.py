@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["KaspaLogicalBlock"]
+__all__ = ["KaspaLogicalBlock", "VirtualKaspaBlock"]
 
 import secrets
 from dataclasses import dataclass, field
@@ -260,3 +260,47 @@ class KaspaLogicalBlock:
         if attr == '_visual':
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '_visual'")
         return getattr(self._visual, attr)
+
+class VirtualKaspaBlock(KaspaLogicalBlock):
+    """Virtual block for GHOSTDAG template calculation with visual representation."""
+
+    def __init__(self, tips : List[KaspaLogicalBlock], v_config: _KaspaConfigInternal):
+
+        # Calculate position: right of tallest parent, at genesis_y
+        if not tips:
+            # No parents (empty DAG) - use genesis position
+            x_position = v_config.genesis_x
+            y_position = v_config.genesis_y
+        else:
+            # Find rightmost parent by x-position
+            rightmost_parent = max(tips, key=lambda p: p.visual_block.square.get_center()[0])
+            parent_pos = rightmost_parent.visual_block.square.get_center()
+            x_position = parent_pos[0] + v_config.horizontal_spacing
+            y_position = v_config.genesis_y  # Always at genesis level
+
+        # Initialize with calculated position
+        super().__init__(
+            name="__virtual__",
+            parents=tips,
+            position=(x_position, y_position),
+            config=v_config
+        )
+
+        # Override visual block with "V" label (same position)
+        parent_visuals = [p.visual_block for p in self.parents]
+        self._visual = KaspaVisualBlock(
+            label_text="V",
+            position=(x_position, y_position),
+            parents=parent_visuals,
+            config=v_config
+        )
+        self._visual.logical_block = self
+
+    def create_destroy_animation(self) -> list:
+        """Fade to complete invisibility using Manim's FadeOut."""
+        return [
+            self.visual_block.square.animate.set_opacity(0),
+            self.visual_block.background_rect.animate.set_opacity(0),
+            self.visual_block.label.animate.set_opacity(0),
+            *[line.animate.set_stroke(opacity=0) for line in self.visual_block.parent_lines]
+        ]

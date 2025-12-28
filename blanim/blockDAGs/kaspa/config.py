@@ -217,3 +217,70 @@ class _KaspaConfigInternal(BaseBlockConfig):
 
         # Default configuration instance
 DEFAULT_KASPA_CONFIG = _KaspaConfigInternal()
+
+"""
+################################################################################  
+TODO: Centralize Animation Timing Control  
+========================================  
+  
+PROBLEM: Animation timing is inconsistent across different block creation methods  
+- Instant blocks: 2.0s for vertical centering/shift (creation is instant)  
+- Virtual blocks: 2.0s for full creation animation (block + parent lines)  
+- Multiple blocks: 2.0s for repositioning only  
+  
+SOLUTION: Extend config system with granular timing parameters  
+  
+1. UPDATE CONFIG (blanim/blockDAGs/kaspa/config.py):  
+    @dataclass  
+    class _KaspaConfigInternal(BaseBlockConfig):  
+        # ANIMATION TIMING - Granular control  
+        create_run_time: float = 2.0      # Block creation (single or multiple)  
+        shift_run_time: float = 1.0       # Shift/repositioning animations    
+        centering_run_time: float = 1.0   # Vertical centering after batch creation  
+        camera_follow_time: float = 1.0   # Camera following (existing)  
+  
+2. UPDATE KaspaDAG (blanim/blockDAGs/kaspa/dag.py):  
+    def set_animation_timing(self, create_time=None, shift_time=None, centering_time=None):  
+        Centralized timing control for all animations.  
+        if create_time is not None:  
+            self.config.create_run_time = create_time  
+        if shift_time is not None:  
+            self.config.shift_run_time = shift_time  
+        if centering_time is not None:  
+            self.config.centering_run_time = centering_time  
+        return self  
+  
+    def get_animation_timing(self):  
+        Get current timing settings.  
+        return {  
+            'create': self.config.create_run_time,  
+            'shift': self.config.shift_run_time,  
+            'centering': self.config.centering_run_time  
+        }  
+  
+3. UPDATE METHODS TO USE CONSISTENT TIMING:  
+    - KaspaVisualBlock.create_with_lines(): Use create_run_time  
+    - BlockManager._animate_dag_repositioning(): Use shift_run_time    
+    - create_blocks_from_list_instant_with_vertical_centering(): Use centering_run_time  
+  
+4. USAGE EXAMPLE:  
+    dag = KaspaDAG(scene=self)  
+    dag.set_animation_timing(  
+        create_time=2.0,    # All block creation  
+        shift_time=1.0,     # All shifts/repositioning  
+        centering_time=1.0  # Vertical centering  
+    )  
+  
+BENEFITS:  
+- Centralized control over all animation timing  
+- Consistent behavior regardless of creation method  
+- Easy to adjust timing globally or per-scene  
+- Follows existing config system pattern  
+  
+RELATED FILES:  
+- blanim/blockDAGs/kaspa/config.py:146-150 (current timing config)  
+- blanim/blockDAGs/kaspa/visual_block.py:222-232 (create_with_lines timing)  
+- blanim/blockDAGs/kaspa/dag.py:833-837 (block creation animation)  
+- selfish_mining_bitcoin.py:1293-1368 (AnimationTimingConfig pattern reference)  
+################################################################################ 
+"""

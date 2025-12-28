@@ -121,7 +121,7 @@ import numpy as np
 from manim import Wait, RIGHT, config, AnimationGroup, Animation, UpdateFromFunc, Indicate, RED, ORANGE, YELLOW, logger, \
     linear, FadeOut, ORIGIN
 
-from .logical_block import KaspaLogicalBlock
+from .logical_block import KaspaLogicalBlock, VirtualKaspaBlock
 from .config import KaspaConfig, DEFAULT_KASPA_CONFIG, _KaspaConfigInternal
 
 if TYPE_CHECKING:
@@ -145,6 +145,7 @@ class KaspaDAG:
         self.blocks: dict[str, KaspaLogicalBlock] = {}
         self.all_blocks: List[KaspaLogicalBlock] = []
         self.genesis: Optional[KaspaLogicalBlock] = None
+        self.virtual_block: Optional[VirtualKaspaBlock] = None
 
         # NEW: State tracking for step-by-step workflow
         self.workflow_steps: List[Callable] = []
@@ -1222,6 +1223,60 @@ class KaspaDAG:
             self.scene.camera.frame.animate.move_to(ORIGIN),
             run_time=self.config.camera_follow_time
         )
+
+    ####################
+    # Virtual Block # TODO destroy and create a new virtual block any time a new block is added to the dag (if desired by user)
+    ####################
+
+    def add_virtual_to_scene(self) -> VirtualKaspaBlock:
+        """Create and add virtual block to scene with animation."""
+        tips = self.get_current_tips()
+        virtual = VirtualKaspaBlock(tips, self.config)
+
+        # Add to DAG tracking structures
+        self.blocks[virtual.name] = virtual
+        self.all_blocks.append(virtual)
+
+        self.scene.play(virtual.visual_block.create_with_lines())
+        self.virtual_block = virtual  # Track for cleanup
+        return virtual
+
+    # TODO automatic destroy virtual any time new block/s added to dag using this func
+    def _cleanup_virtual_block(self) -> None:
+        """Destroy virtual block if it exists."""
+        if self.virtual_block is not None:
+            self.destroy_virtual_block()
+            self.virtual_block = None
+
+    def destroy_virtual_block(self):
+        """Completely destroy a full logical virtual block."""
+
+        if self.virtual_block is None:
+            return
+
+        # Play fade-out animation FIRST
+        fade_animations = self.virtual_block.create_destroy_animation()
+        self.scene.play(*fade_animations)
+
+        # 1. Visual cleanup
+        visual = self.virtual_block.visual_block
+        self.scene.remove(visual.square, visual.label)
+        for line in visual.parent_lines:
+            self.scene.remove(line)
+
+        # 2. Remove from parent blocks' children lists
+        for parent in self.virtual_block.parents:
+            if self.virtual_block in parent.children:
+                parent.children.remove(self.virtual_block)
+
+        # 3. Remove from DAG data structures
+        if self.virtual_block.name in self.blocks:
+            del self.blocks[self.virtual_block.name]
+        if self.virtual_block in self.all_blocks:
+            self.all_blocks.remove(self.virtual_block)
+
+        # 4. Clear tracking reference
+        self.virtual_block = None
 
 class KaspaConfigManager:
     """Manages configuration for a KaspaDAG instance."""

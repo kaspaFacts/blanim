@@ -79,7 +79,6 @@ class BaseVisualBlock(VGroup):
         self.add(self.background_rect, self.square, self.label)
 
         self.parent_lines = []
-        self.child_lines = []
 
         # Set z_index at the end
         self.background_rect.set_z_index(11)
