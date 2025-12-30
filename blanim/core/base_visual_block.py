@@ -4,7 +4,7 @@ from __future__ import annotations
 
 __all__ = ["BaseVisualBlock"]
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 from manim import (
@@ -15,7 +15,7 @@ from manim import (
     BLACK,
     Create,
     AnimationGroup,
-    VGroup
+    VGroup, YELLOW_C, PURE_BLUE, PURE_RED
 )
 
 if TYPE_CHECKING:
@@ -113,7 +113,10 @@ class BaseVisualBlock(VGroup):
 
         return AnimationGroup(create_anim, bgsquare_anim, label_transform)
 
-    def change_label(self, text: str):
+    def change_label(self, text: Union[str, int]):
+        # Convert int to str if needed
+        if isinstance(text, int):
+            text = str(text)
 
         run_time = self.config.label_change_run_time
 
@@ -172,6 +175,30 @@ class BaseVisualBlock(VGroup):
             mob.set_stroke(color, width=width)
 
         return pulse_stroke
+
+    ####################
+    # Coloring Block Functions
+    ####################
+
+    def set_block_blue(self):
+        """Returns animation to set a block fill to BLUE"""
+        return self.square.animate.set_fill(
+            color=PURE_BLUE,
+            opacity=0.9
+        )
+
+    def set_block_red(self):
+        """Returns animation to set a block fill to RED"""
+        return self.square.animate.set_fill(
+            color=PURE_RED,
+            opacity=0.9
+        )
+
+    def set_block_stroke_yellow(self):
+        """Returns animation to set a block stroke to YELLOW"""
+        return self.square.animate.set_stroke(
+            color=YELLOW_C
+        )
 
     ####################
     # Override Functions

@@ -796,6 +796,7 @@ class GHOSTDAGExample(HUD2DScene):
         dag = KaspaDAG(scene=self)
         dag.set_k(3)
         animation_wait_time = 2.5
+        animation_coloring_time = 1.0
 
         self.wait(1)
         self.narrate("Kaspa - GHOSTDAG (first draft - incomplete)", run_time=1.0)
@@ -804,30 +805,107 @@ class GHOSTDAGExample(HUD2DScene):
 
         self.caption("Figure 3 from PHANTOM GHOSTDAG animated.", run_time=1.0)
         self.wait(animation_wait_time)
+        dag.add_virtual_to_scene()
+        self.caption(r"When DAG == \{Gen\} then return [\{Gen\},\{Gen\}]", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption(r"Or when DAG is Genesis, \{Gen\} is Blue, and order is \{Gen\}", run_time=1.0)
+        self.play(genesis_block.set_block_blue(), run_time=animation_coloring_time)
+        self.narrate(r"k=3 \{Gen\}")
+        self.wait(animation_wait_time)
 
-        all_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
-            ("E", ["Gen"]),
-            ("D", ["Gen"]),
-            ("C", ["Gen"]),
-            ("B", ["Gen"]),
+        self.reset_scene_and_wait(dag)
+
+        block_e, block_d, block_c, block_b = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("E", ["Gen"], "E"),
+            ("D", ["Gen"], "D"),
+            ("C", ["Gen"], "C"),
+            ("B", ["Gen"], "B"),
         ])
-        all_blocks[1].hash = 0 # Force block D as SP when tiebreaking
+        # Force fixed ordering by lowest hash, order = D, C, E, B
+        block_e.hash = 2
+        block_d.hash = 0 # Force block D as SP when tiebreaking
+        block_c.hash = 1
+        block_b.hash = 3
 
-        self.caption("Caption", run_time=1.0)
+        self.caption("Add Virtual to close the DAG...", run_time=1.0)
         self.wait(animation_wait_time)
 
         virtual = dag.add_virtual_to_scene()
 
+        self.caption("All Tips have the same Blue Score so ties are broken using Lowest Hash", run_time=1.0)
+        self.play(block_d.change_label(block_d.ghostdag.blue_score))
+        self.play(block_c.change_label(block_c.ghostdag.blue_score))
+        self.play(block_e.change_label(block_e.ghostdag.blue_score))
+        self.play(block_b.change_label(block_b.ghostdag.blue_score))
+        self.wait(animation_wait_time)
+        self.caption("This makes ordering Deterministic with Cryptographic Randomness", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Virtual Selected Parent has the Lowest Hash", run_time=1.0)
+        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.narrate(r"\{Gen, D\}")
+        self.wait(animation_wait_time)
+        self.caption("Selected Parent is Blue", run_time=1.0)
+        self.play(block_d.set_block_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.caption("Mergeset is then ordered by Blue Score", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("With Ties broken by Lowest Hash", run_time=1.0)
+        self.narrate(r"k=3 \{Gen, D, C, E, B\}")
+        self.wait(animation_wait_time)
+        self.caption("Each block is checked for k-cluster violations when k=3", run_time=1.0)
+        self.play(AnimationGroup(
+            block_d.change_label("D"),
+            block_c.change_label("C"),
+            block_e.change_label("E"),
+            block_b.change_label("B"),
+        ))
+        self.wait(animation_wait_time)
+
+        self.caption("Starting with Block C", run_time=1.0)
+        self.play(block_c.set_block_stroke_yellow())
+        self.wait(animation_wait_time)
+        self.caption("Block C has only one Blue in its Anticone, Block D", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block D will only have one Blue in its Anticone if Block C is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block C does not violate k-Cluster rules, Block C becomes Blue", run_time=1.0)
+        self.play(block_c.set_block_blue())
+        self.wait(animation_wait_time)
+
+        self.caption("Moving to Block E", run_time=1.0)
+        self.play(block_e.set_block_stroke_yellow())
+        self.wait(animation_wait_time)
+        self.caption("Block E has only two Blue in its Anticone, Block D and Block C", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block D will only have two Blue in its Anticone if Block E is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block C will only have two Blue in its Anticone if Block E is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block E does not violate k-Cluster rules, Block E becomes Blue", run_time=1.0)
+        self.play(block_e.set_block_blue())
+        self.wait(animation_wait_time)
+
+        self.caption("Moving to Block B", run_time=1.0)
+        self.play(block_b.set_block_stroke_yellow())
+        self.wait(animation_wait_time)
+        self.caption("Block B has only three Blue in its Anticone, Block D, Block C, and Block E", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block D will only have three Blue in its Anticone if Block B is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block C will only have three Blue in its Anticone if Block B is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block E will only have three Blue in its Anticone if Block B is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block B does not violate k-Cluster rules, Block B becomes Blue", run_time=1.0)
+        self.play(block_b.set_block_blue())
+        self.wait(animation_wait_time)
+
+        self.caption("All blocks pass validation and become Blue", run_time=1.0)
+        self.wait(animation_wait_time)
         self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
         self.wait(animation_wait_time)
-        dag.highlight("D")
-        dag.fade(all_blocks[0], ["C", "B"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
-        dag.highlight("Gen")
-        self.wait(animation_wait_time)
-        dag.reset_highlighting()
-        self.clear_caption()
-        dag.destroy_virtual_block()
-        self.wait(animation_wait_time)
+
+        self.reset_scene_and_wait(dag)
 
         other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
             ("I", ["E"]),
@@ -835,67 +913,75 @@ class GHOSTDAGExample(HUD2DScene):
             ("F", ["B", "C"]),
         ])
 
-        self.caption("Caption", run_time=1.0)
+        # self.caption("Caption", run_time=1.0)
+        # self.wait(animation_wait_time)
+        #
+        # virtual = dag.add_virtual_to_scene()
+        # self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
+        #
+        # dag.highlight(["H"])
+        # dag.fade("F","B","I")
+        # dag.highlight(["D"])
+        # dag.fade("C","E")
+        # dag.highlight(["Gen"])
+        # self.wait(animation_wait_time)
+        # dag.reset_highlighting()
+        # self.clear_caption()
+        # dag.destroy_virtual_block()
+        # self.wait(animation_wait_time)
+        #
+        # other_other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
+        #     ("L", ["I", "D"]),
+        #     ("K", ["B", "H", "I"]),
+        #     ("J", ["F", "H"]),
+        # ])
+        #
+        # self.caption("Caption", run_time=1.0)
+        # self.wait(animation_wait_time)
+        # other_other_blocks[2].hash = 0
+        # dag.add_virtual_to_scene()
+        # self.caption(f"Virtual blue score: {dag.virtual_block.ghostdag.blue_score}", run_time=1.0)
+        # dag.highlight(["J"])
+        # dag.fade("K", "L", "I")
+        # dag.highlight(["H"])
+        # dag.fade("F","B","I")#TODO does fading an already faded block break it?
+        # dag.highlight(["D"])
+        # dag.fade(block_e, ["C", "B"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
+        # dag.highlight(["Gen"])
+        # self.wait(animation_wait_time)
+        # dag.reset_highlighting()
+        # self.clear_caption()
+        # dag.destroy_virtual_block()
+        # self.wait(animation_wait_time)
+        #
+        # block_m = dag.add_block(parents = [other_other_blocks[1], other_blocks[2]],name = "M")
+        #
+        # self.caption("Caption ", run_time=1.0)
+        # self.wait(animation_wait_time)
+        # dag.add_virtual_to_scene()
+        # self.caption(f"Virtual blue score: {dag.virtual_block.ghostdag.blue_score}", run_time=1.0)
+        # dag.highlight(block_m)
+        # dag.fade("J", "L")
+        # dag.highlight("K")
+        # dag.fade("F")
+        # dag.highlight(["H"])
+        # dag.fade("B","I")
+        # dag.highlight(["D"])
+        # dag.fade(["C", "E"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
+        # dag.highlight(["Gen"])
+        # self.wait(animation_wait_time)
+        # dag.reset_highlighting()
+        #
+        # self.caption("Caption ", run_time=1.0)
         self.wait(animation_wait_time)
 
-        virtual = dag.add_virtual_to_scene()
-        self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
+    def reset_scene_and_wait(self, dag):
+        """Reset highlighting, clear caption, destroy virtual block, and wait."""
+        cleanup_wait_time = 1.0
 
-        dag.highlight(["H"])
-        dag.fade("F","B","I")
-        dag.highlight(["D"])
-        dag.fade("C","E")
-        dag.highlight(["Gen"])
-        self.wait(animation_wait_time)
-        dag.reset_highlighting()
         self.clear_caption()
         dag.destroy_virtual_block()
-        self.wait(animation_wait_time)
-
-        other_other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
-            ("L", ["I", "D"]),
-            ("K", ["B", "H", "I"]),
-            ("J", ["F", "H"]),
-        ])
-
-        self.caption("Caption", run_time=1.0)
-        self.wait(animation_wait_time)
-        other_other_blocks[2].hash = 0
-        dag.add_virtual_to_scene()
-        self.caption(f"Virtual blue score: {dag.virtual_block.ghostdag.blue_score}", run_time=1.0)
-        dag.highlight(["J"])
-        dag.fade("K", "L", "I")
-        dag.highlight(["H"])
-        dag.fade("F","B","I")#TODO does fading an already faded block break it?
-        dag.highlight(["D"])
-        dag.fade(all_blocks[0], ["C", "B"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
-        dag.highlight(["Gen"])
-        self.wait(animation_wait_time)
-        dag.reset_highlighting()
-        self.clear_caption()
-        dag.destroy_virtual_block()
-        self.wait(animation_wait_time)
-
-        block_m = dag.add_block(parents = [other_other_blocks[1], other_blocks[2]],name = "M")
-
-        self.caption("Caption ", run_time=1.0)
-        self.wait(animation_wait_time)
-        dag.add_virtual_to_scene()
-        self.caption(f"Virtual blue score: {dag.virtual_block.ghostdag.blue_score}", run_time=1.0)
-        dag.highlight(block_m)
-        dag.fade("J", "L")
-        dag.highlight("K")
-        dag.fade("F")
-        dag.highlight(["H"])
-        dag.fade("B","I")
-        dag.highlight(["D"])
-        dag.fade(["C", "E"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
-        dag.highlight(["Gen"])
-        self.wait(animation_wait_time)
-        dag.reset_highlighting()
-
-        self.caption("Caption ", run_time=1.0)
-        self.wait(animation_wait_time)
+        self.wait(cleanup_wait_time)
 
 
 class TestHighlightingFutureWithAnticone(HUD2DScene):

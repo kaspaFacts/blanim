@@ -375,11 +375,44 @@ class KaspaVisualBlock(BaseVisualBlock):
             UpdateFromAlphaFunc(self.label, fade_label) # type: ignore
         ]
 
+    def create_unfade_animation(self) -> list[Any]:
+        """Create animations to restore this block to normal opacity from config."""
+
+        # Special handling required for labels due to use of Transform
+        def unfade_label(mob, alpha):
+            # Get current opacity values for all submobjects
+            start_opacities = {}
+            for submob in mob.submobjects:
+                start_opacities[submob] = submob.get_fill_opacity()
+
+                # Only animate submobjects that are currently visible
+            for submob in mob.submobjects:
+                if start_opacities[submob] > 0:  # Only affect visible submobjects
+                    # Interpolate from current opacity to target opacity
+                    current_opacity = start_opacities[submob]
+                    target_opacity = self.kaspa_config.label_opacity
+                    new_opacity = current_opacity + alpha * (target_opacity - current_opacity)
+                    submob.set_fill(opacity=new_opacity, family=False)
+            return mob
+
+        return [
+            self.square.animate.set_fill(opacity=self.kaspa_config.fill_opacity),
+            self.square.animate.set_stroke(opacity=self.kaspa_config.stroke_opacity),
+            UpdateFromAlphaFunc(self.label, unfade_label)  # type: ignore
+        ]
+
     def create_highlight_animation(self, color=None, stroke_width=None) -> Any:
         """Create animation to highlight this block's stroke using config."""
         return self.square.animate.set_stroke(
             self.kaspa_config.highlight_block_color,
             width=self.kaspa_config.highlight_stroke_width
+        )
+
+    def reset_block_stroke(self):#TODO probably remove this and use create_reset_animation, if no use for partial resets are found
+        """Reset Block Stroke to config default"""
+        return self.square.animate.set_stroke(
+            color=self.kaspa_config.stroke_color,
+            width=self.kaspa_config.stroke_width
         )
 
     def highlight_stroke_red(self):

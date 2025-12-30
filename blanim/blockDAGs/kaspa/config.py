@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TypedDict
 
-from manim import BLUE, WHITE, ParsableManimColor, YELLOW, GREEN, PURPLE, RED, logger
+from manim import BLUE, WHITE, ParsableManimColor, YELLOW, GREEN, PURPLE, RED, logger, GRAY
 from ...core.base_config import BaseBlockConfig
 
 __all__ = ["DEFAULT_KASPA_CONFIG", "KaspaConfig", "_KaspaConfigInternal"]
@@ -121,8 +121,8 @@ class _KaspaConfigInternal(BaseBlockConfig):
     # ========================================
     # VISUAL STYLING - Block Appearance
     # ========================================
-    block_color: ParsableManimColor = WHITE  #NOTE if block color is BLUE, the is no visible change during GHOSTDAG coloring animation.
-    fill_opacity: float = 0.3
+    block_color: ParsableManimColor = GRAY  #NOTE if block color is BLUE, the is no visible change during GHOSTDAG coloring animation.
+    fill_opacity: float = 0.9
     stroke_color: ParsableManimColor = BLUE
     stroke_width: float = 3
     stroke_opacity: float = 1.0
