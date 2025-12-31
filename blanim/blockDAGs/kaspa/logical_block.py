@@ -36,6 +36,7 @@ class KaspaLogicalBlock:
             position: tuple[float, float] = (0, 0),
             config: _KaspaConfigInternal = None,
             custom_label: Optional[str] = None,
+            custom_hash: Optional[int] = None
     ):
         if config is None:
             raise ValueError("config parameter is required")
@@ -46,7 +47,7 @@ class KaspaLogicalBlock:
         # Time Created
         self.timestamp = timestamp
         # Tie-breaker (instead of actually hashing, just use a random number like a cryptographic hash)
-        self.hash = secrets.randbits(32)  # 32-bit random integer to keep prob(collision) = low
+        self.hash = custom_hash if custom_hash is not None else secrets.randbits(32)  # 32-bit random integer to keep prob(collision) = low
 
         # DAG structure (single source of truth)
         self.parents = parents if parents else []

@@ -1007,19 +1007,18 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
     def construct(self):
         dag = KaspaDAG(scene=self)
         dag.set_k(3)
-        animation_wait_time = 0.5
-        animation_coloring_time = 0.5
-        caption_time = 0.5
+        animation_wait_time = 5.0
+        animation_coloring_time = 1.0
+        caption_time = 1.0
 
         self.wait(1)
-        self.narrate("Kaspa - GHOSTDAG (from tips - incomplete)", run_time=caption_time)
+        self.narrate("Kaspa - GHOSTDAG (fig 3 anim - incomplete)", run_time=caption_time)
 
-        #TODO parent selection happens during creation, need to add these in rounds
         block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_l, block_k, block_j, block_m = dag.create_blocks_from_list_instant_with_vertical_centering([
             ("Gen", None, "Gen"),
-            ("E", ["Gen"], "E"),
-            ("D", ["Gen"], "D"),
-            ("C", ["Gen"], "C"),
+            ("E", ["Gen"], "E", 2),
+            ("D", ["Gen"], "D", 0),
+            ("C", ["Gen"], "C", 1),
             ("B", ["Gen"], "B"),
             ("I", ["E"], "I"),
             ("H", ["D", "C", "E"], "H"),
@@ -1030,23 +1029,24 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
             ("M", ["K", "F"], "M")
         ])
 
-        self.caption("Figure 3 from PHANTOM GHOSTDAG animated.", run_time=caption_time)
-        self.wait(animation_wait_time)
-
         virtual = dag.add_virtual_to_scene()
 
-        self.caption(r"Inspect Blue Score of Virtual Parents", run_time=caption_time)
+#        self.caption("Figure 3 from PHANTOM GHOSTDAG animated.", run_time=caption_time)
+        self.wait(animation_wait_time)
 
-        dag.fade_blocks(block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_k,)
+#        self.caption(r"Inspect Blue Score of Tips", run_time=caption_time)
+
+        dag.fade_blocks(block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_k)
 
         self.play(block_m.change_label(block_m.ghostdag.blue_score))
         self.play(block_j.change_label(block_j.ghostdag.blue_score))
         self.play(block_l.change_label(block_l.ghostdag.blue_score))
-        self.caption(r"Highest Blue Score = Selected Parent", run_time=caption_time)
+#        self.caption(r"Highest Blue Score = Selected Parent", run_time=caption_time)
         self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.wait(animation_wait_time)
-        self.caption(r"Selected Parent = Blue", run_time=caption_time)
+#        self.wait(animation_wait_time)
+#        self.caption(r"Selected Parent = Blue", run_time=caption_time)
         self.play(block_m.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_m.change_label(block_m.name))
         self.play(block_j.change_label(block_j.name))
         self.play(block_l.change_label(block_l.name))
@@ -1057,7 +1057,7 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
         #Reset for next check
         ##########
 
-        dag.fade_blocks(virtual, block_j, block_l)
+        dag.fade_blocks(block_j, block_l)
         dag.unfade_blocks(block_k, block_f)
 
         self.play(block_k.change_label(block_k.ghostdag.blue_score))
@@ -1067,6 +1067,7 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
 
         self.play(block_k.set_block_pure_blue(), run_time=animation_coloring_time)
 
+        self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_k.change_label(block_k.name))
         self.play(block_f.change_label(block_f.name))
 
@@ -1087,6 +1088,7 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
 
         self.play(block_h.set_block_pure_blue(), run_time=animation_coloring_time)
 
+        self.play(block_h.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_h.change_label(block_h.name))
         self.play(block_i.change_label(block_i.name))
         self.play(block_b.change_label(block_b.name))
@@ -1108,6 +1110,7 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
 
         self.play(block_d.set_block_pure_blue(), run_time=animation_coloring_time)
 
+        self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_d.change_label(block_d.name))
         self.play(block_c.change_label(block_c.name))
         self.play(block_e.change_label(block_e.name))
@@ -1126,9 +1129,69 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
 
         self.play(block_gen.set_block_pure_blue(), run_time=animation_coloring_time)
 
+        self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_gen.change_label(block_gen.name))
 
         self.wait(animation_wait_time)
+
+        self.narrate("Blue Set \{\}", run_time=caption_time)
+        dag.fade_blocks(block_h, block_k, block_m, virtual)
+#        self.caption("Starting at Block D", run_time=caption_time)
+        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+#        self.caption("Add Gen to the Blue Set", run_time=caption_time)
+        self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.narrate("Blue Set \{Gen\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        dag.unfade_blocks(block_h, block_c, block_e)
+#        self.caption("Visit Block H", run_time=caption_time)
+        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+#        self.caption("Add Block D to the Blue Set", run_time=caption_time)
+        self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_c.set_block_blue(), run_time=animation_coloring_time)
+#        self.caption("Block C fits under k=3, add to Blue Set", run_time=caption_time)
+        self.play(block_e.set_block_blue(), run_time=animation_coloring_time)
+#        self.caption("Block E fits under k=3, add to Blue Set", run_time=caption_time)
+        self.narrate("Blue Set \{Gen, D, C, E\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        dag.unfade_blocks(block_k, block_b, block_i)
+#        self.caption("Visit Block K", run_time=caption_time)
+        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+#        self.caption("Add Block K to the Blue Set", run_time=caption_time)
+        self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_b.set_block_red(), run_time=animation_coloring_time)
+#        self.caption("Block B has too many Blues in its anticone", run_time=caption_time)
+        self.play(block_i.set_block_blue(), run_time=animation_coloring_time)
+#        self.caption("Block E fits under k=3, add to Blue Set", run_time=caption_time)
+        self.narrate("Blue Set \{Gen, D, C, E, H, I\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        dag.unfade_blocks(block_m, block_f)
+        #        self.caption("Visit Block K", run_time=caption_time)
+        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        #        self.caption("Add Block K to the Blue Set", run_time=caption_time)
+        self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_f.set_block_red(), run_time=animation_coloring_time)
+        #        self.caption("Block B has too many Blues in its anticone", run_time=caption_time)
+        self.narrate("Blue Set \{Gen, D, C, E, H, I, K\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        dag.unfade_blocks(virtual, block_j, block_l)
+        #        self.caption("Visit Block K", run_time=caption_time)
+        self.play(virtual.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        #        self.caption("Add Block K to the Blue Set", run_time=caption_time)
+        self.play(virtual.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_l.set_block_red(), run_time=animation_coloring_time)
+        self.play(block_j.set_block_red(), run_time=animation_coloring_time)
+        #        self.caption("Block B has too many Blues in its anticone", run_time=caption_time)
+        self.narrate("Blue Set \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        self.wait(3.0)
+
+        #TODO when adding a block, and parents are already faded, need to introduce lines to faded blocks, as faded
+
 
 
 class TestHighlightingFutureWithAnticone(HUD2DScene):

@@ -866,40 +866,41 @@ class KaspaDAG:
     def create_blocks_from_list_instant_with_vertical_centering(
             self,
             blocks_data: List[Union[tuple[str, Optional[List[str]]],
-                                    tuple[str, Optional[List[str]], Optional[str]]]]
+            tuple[str, Optional[List[str]], Optional[str]],
+            tuple[str, Optional[List[str]], Optional[str], Optional[int]]]]
     ) -> List[KaspaLogicalBlock]:
-        """Create multiple blocks from names, parents, and optional labels instantly.
+        """Create multiple blocks from names, parents, optional labels, and optional hash."""
 
-        Args:
-            blocks_data: List of tuples (block_name, parent_names) or
-                        (block_name, parent_names, label) where label is optional
-                        Example: [("Gen", None), ("b1", ["Gen"], "label1"), ("b2", ["Gen"])]
-        """
-        block_map = {}
-        created_blocks = []
+        block_map = {}  # Missing from my previous response
+        created_blocks = []  # Missing from my previous response
 
         # First pass: Create all logical blocks
         for block_data in blocks_data:
-            # Handle both 2-element and 3-element tuples
+            # Handle 2, 3, or 4-element tuples
             if len(block_data) == 2:
                 block_name, parent_names = block_data
                 custom_label = None
+                custom_hash = None
             elif len(block_data) == 3:
                 block_name, parent_names, custom_label = block_data
+                custom_hash = None
+            elif len(block_data) == 4:
+                block_name, parent_names, custom_label, custom_hash = block_data
             else:
-                raise ValueError(f"Expected 2 or 3 elements, got {len(block_data)}")
+                raise ValueError(f"Expected 2, 3, or 4 elements, got {len(block_data)}")
 
-                # Resolve parent names to actual blocks using fuzzy retrieval
+            # Resolve parent names to actual blocks (programmatic only)
             parents = []
             if parent_names:
                 for parent_name in parent_names:
-                    parent_block = self.get_block(parent_name)
-                    if parent_block:
-                        parents.append(parent_block)
-                    elif parent_name in block_map:
+                    if parent_name in block_map:
                         parents.append(block_map[parent_name])
+                    elif parent_name in self.blocks:
+                        parents.append(self.blocks[parent_name])
+                    else:
+                        raise ValueError(f"Parent block '{parent_name}' not found")
 
-                        # Create block directly without workflow/animation
+            # Create block directly without workflow/animation
             position = self.block_manager._calculate_dag_position(parents)
 
             block = KaspaLogicalBlock(
@@ -908,7 +909,8 @@ class KaspaDAG:
                 parents=parents,
                 position=position,
                 config=self.config,
-                custom_label=custom_label  # Pass custom label
+                custom_label=custom_label,
+                custom_hash=custom_hash
             )
 
             self.blocks[block_name] = block
@@ -916,12 +918,12 @@ class KaspaDAG:
             block_map[block_name] = block
             created_blocks.append(block)
 
-            # Second pass: Create all visual components at once
+        # Second pass: Create all visual components at once
         all_creations = []
         for block in created_blocks:
             all_creations.append(block.visual_block.create_with_lines())
 
-            # Single animation creation - everything appears at once
+        # Single animation creation - everything appears at once
         self.scene.play(*all_creations, run_time=1.0)
 
         # NEW: Center blocks around genesis y-position after creation

@@ -15,7 +15,7 @@ from manim import (
     BLACK,
     Create,
     AnimationGroup,
-    VGroup, YELLOW_C, PURE_BLUE, BLUE_E, RED_E, ParsableManimColor
+    VGroup, YELLOW_C, PURE_BLUE, BLUE_E, RED_E, ParsableManimColor, BLUE
 )
 
 class BaseVisualBlock(VGroup):
@@ -201,6 +201,12 @@ class BaseVisualBlock(VGroup):
         """Returns animation to set a block stroke to YELLOW"""
         return self.square.animate.set_stroke(
             color=YELLOW_C
+        )
+
+    def reset_block_stroke_color(self):
+        """Returns animation to set a block stroke to YELLOW"""
+        return self.square.animate.set_stroke(
+            color=self.stroke_color
         )
 
     ####################
