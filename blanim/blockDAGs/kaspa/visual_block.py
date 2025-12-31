@@ -349,7 +349,8 @@ class KaspaVisualBlock(BaseVisualBlock):
         # Wrap with line updates using existing method
         return self.create_movement_animation(base_animation)
 
-    def create_fade_animation(self) -> list[Any]:
+    #TODO NOTE changed to return AnimationGroup from List, will require unpacking AnimationGroup to use as list
+    def create_fade_animation(self) -> list[Animation]:
         """Create animations to fade this block using config opacity."""
 
         # Special handling required for labels due to use of Transform
@@ -372,10 +373,11 @@ class KaspaVisualBlock(BaseVisualBlock):
         return [
             self.square.animate.set_fill(opacity=self.kaspa_config.fade_opacity),
             self.square.animate.set_stroke(opacity=self.kaspa_config.fade_opacity),
+            self.background_rect.animate.set_fill(opacity=self.kaspa_config.fade_opacity),
             UpdateFromAlphaFunc(self.label, fade_label) # type: ignore
         ]
 
-    def create_unfade_animation(self) -> list[Any]:
+    def create_unfade_animation(self) -> list[Animation]:
         """Create animations to restore this block to normal opacity from config."""
 
         # Special handling required for labels due to use of Transform
@@ -398,6 +400,7 @@ class KaspaVisualBlock(BaseVisualBlock):
         return [
             self.square.animate.set_fill(opacity=self.kaspa_config.fill_opacity),
             self.square.animate.set_stroke(opacity=self.kaspa_config.stroke_opacity),
+            self.background_rect.animate.set_fill(opacity=self.kaspa_config.bg_rect_opacity),
             UpdateFromAlphaFunc(self.label, unfade_label)  # type: ignore
         ]
 

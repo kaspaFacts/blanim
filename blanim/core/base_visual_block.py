@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-__all__ = ["BaseVisualBlock"]
+__all__ = ["BaseVisualBlock", "validate_protocol_attributes"]
 
-from typing import TYPE_CHECKING, Union
+from typing import Union, Protocol, get_type_hints
 
 import numpy as np
 from manim import (
@@ -15,11 +15,8 @@ from manim import (
     BLACK,
     Create,
     AnimationGroup,
-    VGroup, YELLOW_C, PURE_BLUE, PURE_RED
+    VGroup, YELLOW_C, PURE_BLUE, BLUE_E, RED_E, ParsableManimColor
 )
-
-if TYPE_CHECKING:
-    from ..core.base_config import BaseBlockConfig
 
 class BaseVisualBlock(VGroup):
     """Base class for blockchain block visualization.
@@ -29,7 +26,6 @@ class BaseVisualBlock(VGroup):
     any highlighting methods.
     """
 
-    config: BaseBlockConfig
     square: Square
     label: Text
 
@@ -37,7 +33,7 @@ class BaseVisualBlock(VGroup):
             self,
             label_text: str,
             position: tuple[float, float],
-            config: BaseBlockConfig,
+            config: BlockConfigProtocol,
     ) -> None:
         super().__init__()
 
@@ -59,7 +55,7 @@ class BaseVisualBlock(VGroup):
         self.background_rect = Square(
             side_length=config.side_length,
             fill_color=BLACK,
-            fill_opacity=0.9,  # Allows slight line visibility
+            fill_opacity=config.bg_rect_opacity,  # Allows slight line visibility
             stroke_width=0,
         )
 
@@ -146,7 +142,7 @@ class BaseVisualBlock(VGroup):
     def create_highlight_animation(self, color=None, stroke_width=None):
         """Returns animation for highlighting this block's stroke."""
         if color is None:
-            color = self.config.highlight_color
+            color = self.config.highlight_block_color
         if stroke_width is None:
             stroke_width = self.config.highlight_stroke_width
 
@@ -180,17 +176,24 @@ class BaseVisualBlock(VGroup):
     # Coloring Block Functions
     ####################
 
-    def set_block_blue(self):
+    def set_block_pure_blue(self):
         """Returns animation to set a block fill to BLUE"""
         return self.square.animate.set_fill(
             color=PURE_BLUE,
             opacity=0.9
         )
 
+    def set_block_blue(self):
+        """Returns animation to set a block fill to BLUE"""
+        return self.square.animate.set_fill(
+            color=BLUE_E,
+            opacity=0.9
+        )
+
     def set_block_red(self):
         """Returns animation to set a block fill to RED"""
         return self.square.animate.set_fill(
-            color=PURE_RED,
+            color=RED_E,
             opacity=0.9
         )
 
@@ -208,3 +211,59 @@ class BaseVisualBlock(VGroup):
     def get_center(self) -> np.ndarray:
         """Override to return only the square's center, ignoring label positioning."""
         return self.square.get_center()
+
+
+class BlockConfigProtocol(Protocol):
+    """
+    Protocol defining required interface for block configurations.
+
+    WHY THIS EXISTS:
+    ---------------
+    This Protocol replaces BaseBlockConfig inheritance while maintaining type safety.
+    It defines the exact contract that all consensus-type configs must implement
+    to work with BaseVisualBlock. Every field in this protocol is REQUIRED in
+    your consensus config class - missing any field will cause BaseVisualBlock
+    to fail at runtime.
+
+    DEVELOPER REQUIREMENTS:
+    -----------------------
+    When creating a new consensus config (e.g., NewConsensusConfig), you MUST
+    implement ALL of these attributes with appropriate types. The Protocol
+    ensures IDE autocomplete and static type checking work correctly.
+
+    This is an INTERNAL interface - only developers extending the framework
+    need to implement this. End users never interact with this Protocol directly.
+    """
+
+    # Visual styling - Block Appearance (REQUIRED for Square creation)
+    block_color: ParsableManimColor
+    fill_opacity: float
+    bg_rect_opacity: float
+    stroke_color: ParsableManimColor
+    stroke_width: float
+    stroke_opacity: float
+    side_length: float
+
+    # Label styling (REQUIRED for text rendering)
+    label_font_size: int
+    label_color: ParsableManimColor
+
+    # Animation timing (REQUIRED for all animation methods)
+    create_run_time: float
+    label_change_run_time: float
+
+    # Highlighting (REQUIRED for block highlighting effects)
+    highlight_block_color: ParsableManimColor
+    highlight_stroke_width: float
+
+def _get_protocol_attributes() -> list[str]:
+    """Extract all required attributes from Protocol automatically."""
+    return [attr for attr, _ in get_type_hints(BlockConfigProtocol).items()
+            if not attr.startswith('_')]
+
+def validate_protocol_attributes(config) -> None:
+    """Validate config has all Protocol attributes - auto-syncs with Protocol."""
+    required_attrs = _get_protocol_attributes()
+    missing = [attr for attr in required_attrs if not hasattr(config, attr)]
+    if missing:
+        raise AttributeError(f"Config missing required Protocol attributes: {missing}")

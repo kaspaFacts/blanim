@@ -1,10 +1,11 @@
 # blanim\blanim\blockDAGs\kaspa\config.py
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import TypedDict
 
 from manim import BLUE, WHITE, ParsableManimColor, YELLOW, GREEN, PURPLE, RED, logger, GRAY
-from ...core.base_config import BaseBlockConfig
+
+from ...core.base_visual_block import validate_protocol_attributes
 
 __all__ = ["DEFAULT_KASPA_CONFIG", "KaspaConfig", "_KaspaConfigInternal"]
 
@@ -20,6 +21,7 @@ class KaspaConfig(TypedDict, total=False):
     # Visual Styling - Block Appearance
     block_color: ParsableManimColor
     fill_opacity: float
+    bg_rect_opacity: float
     stroke_color: ParsableManimColor
     stroke_width: float
     stroke_opacity: float
@@ -79,7 +81,7 @@ class KaspaConfig(TypedDict, total=False):
     ghostdag_selected_fill: ParsableManimColor
 
 @dataclass
-class _KaspaConfigInternal(BaseBlockConfig):
+class _KaspaConfigInternal:
     """Complete configuration for Kaspa blockDAG visualization.
 
     Combines visual styling and spatial layout into a single config.
@@ -123,6 +125,7 @@ class _KaspaConfigInternal(BaseBlockConfig):
     # ========================================
     block_color: ParsableManimColor = GRAY  #NOTE if block color is BLUE, the is no visible change during GHOSTDAG coloring animation.
     fill_opacity: float = 0.9
+    bg_rect_opacity: float = 0.9
     stroke_color: ParsableManimColor = BLUE
     stroke_width: float = 3
     stroke_opacity: float = 1.0
@@ -182,8 +185,16 @@ class _KaspaConfigInternal(BaseBlockConfig):
     horizontal_spacing: float = 2.0
     vertical_spacing: float = 1.0  # For parallel blocks during forks
 
+    #TODO ensure all opacity changes are validated, ensure all spacings are positive, throw a logger warning for "valid but nonsense" things like setting genesis_y to 100
     def __post_init__(self):
         """Validate and auto-correct values with warnings."""
+
+        # Auto-validate Protocol attributes
+        validate_protocol_attributes(self)
+
+        # Auto-validate TypedDict completeness
+        validate_typeddict_completeness()
+
         # Auto-correct opacity values
         if self.fill_opacity <= 0:
             logger.warning("fill_opacity must be > 0, auto-correcting to 0.01")
@@ -215,8 +226,30 @@ class _KaspaConfigInternal(BaseBlockConfig):
             logger.warning("k must be >= 0, auto-correcting to 0")
             self.k = 0
 
-        # Default configuration instance
+
+def _get_dataclass_fields(cls) -> set[str]:
+    """Extract all field names from a dataclass."""
+    return {field.name for field in fields(cls)}
+
+def _get_typeddict_fields(cls) -> set[str]:
+    """Extract all field names from a TypedDict."""
+    return set(cls.__annotations__.keys())
+
+def validate_typeddict_completeness() -> None:
+    """Validate that KaspaConfig TypedDict includes all _KaspaConfigInternal fields."""
+    dataclass_fields = _get_dataclass_fields(_KaspaConfigInternal)
+    typeddict_fields = _get_typeddict_fields(KaspaConfig)
+
+    missing_fields = dataclass_fields - typeddict_fields
+    if missing_fields:
+        raise AttributeError(
+            f"KaspaConfig TypedDict missing {len(missing_fields)} fields from _KaspaConfigInternal: "
+            f"{sorted(missing_fields)}. Add these fields to ensure users can modify all parameters."
+        )
+
+# Default configuration instance
 DEFAULT_KASPA_CONFIG = _KaspaConfigInternal()
+
 
 """
 ################################################################################  

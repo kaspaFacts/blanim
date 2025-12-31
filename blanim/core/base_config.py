@@ -1,5 +1,11 @@
 # blanim\blanim\core\base_config.py
 
+#TODO
+#TODO
+#TODO           REMOVE THIS ENTIRELY, replaced by protocol in base_visual_block.py with validation in kaspa(or Bitcoin)/config.py
+#TODO
+#TODO
+
 from dataclasses import dataclass
 from manim import BLUE, WHITE, YELLOW, ParsableManimColor, PURE_BLUE
 

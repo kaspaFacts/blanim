@@ -842,7 +842,7 @@ class GHOSTDAGExample(HUD2DScene):
         self.wait(animation_wait_time)
         self.caption("Virtual Selected Parent has the Lowest Hash", run_time=1.0)
         self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.narrate(r"\{Gen, D\}")
+        self.narrate(r"k=3 \{Gen, D\}")
         self.wait(animation_wait_time)
         self.caption("Selected Parent is Blue", run_time=1.0)
         self.play(block_d.set_block_blue(), run_time=animation_coloring_time)
@@ -900,42 +900,59 @@ class GHOSTDAGExample(HUD2DScene):
         self.play(block_b.set_block_blue())
         self.wait(animation_wait_time)
 
-        self.caption("All blocks pass validation and become Blue", run_time=1.0)
+        self.caption("All Blue Candidates pass and become Blue", run_time=1.0)
         self.wait(animation_wait_time)
         self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
         self.wait(animation_wait_time)
 
         self.reset_scene_and_wait(dag)
 
-        other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
-            ("I", ["E"]),
-            ("H", ["C", "D", "E"]),
-            ("F", ["B", "C"]),
+        block_i, block_h, block_f = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("I", ["E"], "I"),
+            ("H", ["C", "D", "E"], "H"),
+            ("F", ["B", "C"], "F"),
+        ])
+        self.clear_narrate()
+        self.caption("Add Virtual to close the DAG...", run_time=1.0)
+        self.wait(animation_wait_time)
+
+        virtual = dag.add_virtual_to_scene()
+
+        self.caption("Inspect Virtual Parents by Blue Score", run_time=1.0)
+        self.play(block_i.change_label(block_i.ghostdag.blue_score))
+        self.play(block_h.change_label(block_h.ghostdag.blue_score))
+        self.play(block_f.change_label(block_f.ghostdag.blue_score))
+        self.wait(animation_wait_time)
+
+        self.caption("Virtual Selected Parent has the highest Blue Score", run_time=1.0)
+        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Selected Parent is always blue, and is added to the order", run_time=1.0)
+        self.play(block_h.set_block_blue())
+        self.narrate(r"k=3 \{Gen, D, C, E, H\}")
+        self.wait(animation_wait_time)
+
+
+        self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
+
+        dag.highlight(["H"])
+        dag.fade("F","B","I")
+        dag.highlight(["D"])
+        dag.fade("C","E")
+        dag.highlight(["Gen"])
+        self.wait(animation_wait_time)
+        dag.reset_highlighting()
+        self.clear_caption()
+        dag.destroy_virtual_block()
+        self.wait(animation_wait_time)
+
+        other_other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("L", ["I", "D"]),
+            ("K", ["B", "H", "I"]),
+            ("J", ["F", "H"]),
         ])
 
-        # self.caption("Caption", run_time=1.0)
-        # self.wait(animation_wait_time)
-        #
-        # virtual = dag.add_virtual_to_scene()
-        # self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
-        #
-        # dag.highlight(["H"])
-        # dag.fade("F","B","I")
-        # dag.highlight(["D"])
-        # dag.fade("C","E")
-        # dag.highlight(["Gen"])
-        # self.wait(animation_wait_time)
-        # dag.reset_highlighting()
-        # self.clear_caption()
-        # dag.destroy_virtual_block()
-        # self.wait(animation_wait_time)
-        #
-        # other_other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
-        #     ("L", ["I", "D"]),
-        #     ("K", ["B", "H", "I"]),
-        #     ("J", ["F", "H"]),
-        # ])
-        #
         # self.caption("Caption", run_time=1.0)
         # self.wait(animation_wait_time)
         # other_other_blocks[2].hash = 0
@@ -983,6 +1000,74 @@ class GHOSTDAGExample(HUD2DScene):
         dag.destroy_virtual_block()
         self.wait(cleanup_wait_time)
 
+
+class GHOSTDAGFig3FromTips(HUD2DScene):
+    """GHOSTDAG Example from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21'."""
+
+    def construct(self):
+        dag = KaspaDAG(scene=self)
+        dag.set_k(3)
+        animation_wait_time = 0.5
+        animation_coloring_time = 0.5
+        caption_time = 0.5
+
+        self.wait(1)
+        self.narrate("Kaspa - GHOSTDAG (from tips - incomplete)", run_time=caption_time)
+
+        block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_l, block_k, block_j, block_m = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("Gen", None, "Gen"),
+            ("E", ["Gen"], "E"),
+            ("D", ["Gen"], "D"),
+            ("C", ["Gen"], "C"),
+            ("B", ["Gen"], "B"),
+            ("I", ["E"], "I"),
+            ("H", ["C", "D", "E"], "H"),
+            ("F", ["B", "C"], "F"),
+            ("L", ["I", "D"], "L"),
+            ("K", ["B", "H", "I"], "K"),
+            ("J", ["F", "H"], "J"),
+            ("M", ["K", "F"], "M")
+        ])
+
+        self.caption("Figure 3 from PHANTOM GHOSTDAG animated.", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        dag.add_virtual_to_scene()
+
+        self.caption(r"Inspect Blue Score of Virtual Parents", run_time=caption_time)
+        self.play(
+            block_gen.create_fade_animation(),
+            block_e.create_fade_animation(),
+            block_d.create_fade_animation(),
+            block_c.create_fade_animation(),
+            block_b.create_fade_animation(),
+            block_i.create_fade_animation(),
+            block_h.create_fade_animation(),
+            block_f.create_fade_animation(),
+            block_k.create_fade_animation(),
+        )
+        self.play(block_m.change_label(block_m.ghostdag.blue_score))
+        self.play(block_j.change_label(block_j.ghostdag.blue_score))
+        self.play(block_l.change_label(block_l.ghostdag.blue_score))
+        self.caption(r"Highest Blue Score = Selected Parent", run_time=caption_time)
+        self.play(block_m.animate.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.caption(r"Selected Parent = Blue", run_time=caption_time)
+        self.play(block_m.animate.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_m.change_label(block_m.name))
+        self.play(block_j.change_label(block_j.name))
+        self.play(block_l.change_label(block_l.name))
+        self.wait(animation_wait_time)
+
+        self.reset_scene_and_wait(dag)
+
+    def reset_scene_and_wait(self, dag):
+        """Reset highlighting, clear caption, destroy virtual block, and wait."""
+        cleanup_wait_time = 1.0
+
+        self.clear_caption()
+        dag.destroy_virtual_block()
+        self.wait(cleanup_wait_time)
 
 class TestHighlightingFutureWithAnticone(HUD2DScene):
     """Test highlighting future cone when focused block has anticone relationships."""
