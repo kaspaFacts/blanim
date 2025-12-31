@@ -937,9 +937,9 @@ class GHOSTDAGExample(HUD2DScene):
         self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
 
         dag.highlight(["H"])
-        dag.fade("F","B","I")
+        dag.fade_blocks("F","B","I")
         dag.highlight(["D"])
-        dag.fade("C","E")
+        dag.fade_blocks("C","E")
         dag.highlight(["Gen"])
         self.wait(animation_wait_time)
         dag.reset_highlighting()
@@ -1014,6 +1014,7 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
         self.wait(1)
         self.narrate("Kaspa - GHOSTDAG (from tips - incomplete)", run_time=caption_time)
 
+        #TODO parent selection happens during creation, need to add these in rounds
         block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_l, block_k, block_j, block_m = dag.create_blocks_from_list_instant_with_vertical_centering([
             ("Gen", None, "Gen"),
             ("E", ["Gen"], "E"),
@@ -1021,7 +1022,7 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
             ("C", ["Gen"], "C"),
             ("B", ["Gen"], "B"),
             ("I", ["E"], "I"),
-            ("H", ["C", "D", "E"], "H"),
+            ("H", ["D", "C", "E"], "H"),
             ("F", ["B", "C"], "F"),
             ("L", ["I", "D"], "L"),
             ("K", ["B", "H", "I"], "K"),
@@ -1032,42 +1033,103 @@ class GHOSTDAGFig3FromTips(HUD2DScene):
         self.caption("Figure 3 from PHANTOM GHOSTDAG animated.", run_time=caption_time)
         self.wait(animation_wait_time)
 
-        dag.add_virtual_to_scene()
+        virtual = dag.add_virtual_to_scene()
 
         self.caption(r"Inspect Blue Score of Virtual Parents", run_time=caption_time)
-        self.play(
-            block_gen.create_fade_animation(),
-            block_e.create_fade_animation(),
-            block_d.create_fade_animation(),
-            block_c.create_fade_animation(),
-            block_b.create_fade_animation(),
-            block_i.create_fade_animation(),
-            block_h.create_fade_animation(),
-            block_f.create_fade_animation(),
-            block_k.create_fade_animation(),
-        )
+
+        dag.fade_blocks(block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_k,)
+
         self.play(block_m.change_label(block_m.ghostdag.blue_score))
         self.play(block_j.change_label(block_j.ghostdag.blue_score))
         self.play(block_l.change_label(block_l.ghostdag.blue_score))
         self.caption(r"Highest Blue Score = Selected Parent", run_time=caption_time)
-        self.play(block_m.animate.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
         self.caption(r"Selected Parent = Blue", run_time=caption_time)
-        self.play(block_m.animate.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_pure_blue(), run_time=animation_coloring_time)
         self.play(block_m.change_label(block_m.name))
         self.play(block_j.change_label(block_j.name))
         self.play(block_l.change_label(block_l.name))
+
         self.wait(animation_wait_time)
 
-        self.reset_scene_and_wait(dag)
+        ##########
+        #Reset for next check
+        ##########
 
-    def reset_scene_and_wait(self, dag):
-        """Reset highlighting, clear caption, destroy virtual block, and wait."""
-        cleanup_wait_time = 1.0
+        dag.fade_blocks(virtual, block_j, block_l)
+        dag.unfade_blocks(block_k, block_f)
 
-        self.clear_caption()
-        dag.destroy_virtual_block()
-        self.wait(cleanup_wait_time)
+        self.play(block_k.change_label(block_k.ghostdag.blue_score))
+        self.play(block_f.change_label(block_f.ghostdag.blue_score))
+
+        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.play(block_k.set_block_pure_blue(), run_time=animation_coloring_time)
+
+        self.play(block_k.change_label(block_k.name))
+        self.play(block_f.change_label(block_f.name))
+
+        self.wait(animation_wait_time)
+
+        ##########
+        #Reset for next check
+        ##########
+
+        dag.fade_blocks(block_f)
+        dag.unfade_blocks(block_h, block_i, block_b)
+
+        self.play(block_h.change_label(block_h.ghostdag.blue_score))
+        self.play(block_i.change_label(block_i.ghostdag.blue_score))
+        self.play(block_b.change_label(block_b.ghostdag.blue_score))
+
+        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.play(block_h.set_block_pure_blue(), run_time=animation_coloring_time)
+
+        self.play(block_h.change_label(block_h.name))
+        self.play(block_i.change_label(block_i.name))
+        self.play(block_b.change_label(block_b.name))
+
+        self.wait(animation_wait_time)
+
+        ##########
+        #Reset for next check
+        ##########
+
+        dag.fade_blocks(block_b, block_i)
+        dag.unfade_blocks(block_d, block_c, block_e)
+
+        self.play(block_d.change_label(block_d.ghostdag.blue_score))
+        self.play(block_c.change_label(block_c.ghostdag.blue_score))
+        self.play(block_e.change_label(block_e.ghostdag.blue_score))
+
+        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.play(block_d.set_block_pure_blue(), run_time=animation_coloring_time)
+
+        self.play(block_d.change_label(block_d.name))
+        self.play(block_c.change_label(block_c.name))
+        self.play(block_e.change_label(block_e.name))
+
+        self.wait(animation_wait_time)
+
+        ##########
+        #Reset for next check
+        ##########
+
+        dag.fade_blocks(block_c, block_e)
+        dag.unfade_blocks(block_gen)
+        self.play(block_gen.change_label(block_gen.ghostdag.blue_score))
+
+        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.play(block_gen.set_block_pure_blue(), run_time=animation_coloring_time)
+
+        self.play(block_gen.change_label(block_gen.name))
+
+        self.wait(animation_wait_time)
+
 
 class TestHighlightingFutureWithAnticone(HUD2DScene):
     """Test highlighting future cone when focused block has anticone relationships."""

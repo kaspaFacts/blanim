@@ -133,6 +133,7 @@ class KaspaVisualBlock(BaseVisualBlock):
         super().__init__(label_text, position, config)
 
         self.kaspa_config = config
+        self.is_faded = False
         # Handle parent lines with config
         if parents:
             self.parent_lines = []
@@ -349,7 +350,6 @@ class KaspaVisualBlock(BaseVisualBlock):
         # Wrap with line updates using existing method
         return self.create_movement_animation(base_animation)
 
-    #TODO NOTE changed to return AnimationGroup from List, will require unpacking AnimationGroup to use as list
     def create_fade_animation(self) -> list[Animation]:
         """Create animations to fade this block using config opacity."""
 
@@ -371,8 +371,7 @@ class KaspaVisualBlock(BaseVisualBlock):
             return mob
 
         return [
-            self.square.animate.set_fill(opacity=self.kaspa_config.fade_opacity),
-            self.square.animate.set_stroke(opacity=self.kaspa_config.fade_opacity),
+            self.square.animate.set_fill(opacity=self.kaspa_config.fade_opacity).set_stroke(opacity=self.kaspa_config.fade_opacity),
             self.background_rect.animate.set_fill(opacity=self.kaspa_config.fade_opacity),
             UpdateFromAlphaFunc(self.label, fade_label) # type: ignore
         ]
@@ -398,8 +397,7 @@ class KaspaVisualBlock(BaseVisualBlock):
             return mob
 
         return [
-            self.square.animate.set_fill(opacity=self.kaspa_config.fill_opacity),
-            self.square.animate.set_stroke(opacity=self.kaspa_config.stroke_opacity),
+            self.square.animate.set_fill(opacity=self.kaspa_config.fill_opacity).set_stroke(opacity=self.kaspa_config.stroke_opacity),
             self.background_rect.animate.set_fill(opacity=self.kaspa_config.bg_rect_opacity),
             UpdateFromAlphaFunc(self.label, unfade_label)  # type: ignore
         ]
@@ -472,7 +470,7 @@ class KaspaVisualBlock(BaseVisualBlock):
             UpdateFromAlphaFunc(self.label, reset_label) # type: ignore
         ]
 
-    def create_line_fade_animations(self) -> list[Any]:
+    def create_parent_line_fade_animations(self) -> list[Any]:
         """Create animations to fade all parent lines."""
         return [
             line.animate.set_stroke(opacity=self.kaspa_config.fade_opacity)

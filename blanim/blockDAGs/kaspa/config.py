@@ -168,7 +168,7 @@ class _KaspaConfigInternal:
     highlight_line_color = YELLOW
     highlight_stroke_width: float = 8
 
-    fade_opacity: float = 0.1 # Opacity to fade unrelated blocks(and lines) to during a highlight animation
+    fade_opacity: float = 0.2 # Opacity to fade unrelated blocks(and lines) to during a highlight animation
 
     flash_connections: bool = True # Directional flash animation cycling on lines
     highlight_line_cycle_time = 1 # Time for a single flash to pass on lines

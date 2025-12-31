@@ -295,56 +295,6 @@ class KaspaDAG:
         if highlight_animations:
             self.scene.play(*highlight_animations)
 
-    def fade(self, *blocks: KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]) -> None:
-        """Fade single block or list of blocks using fuzzy retrieval."""
-        # Flatten mixed arguments
-        blocks_list = []
-        for item in blocks:
-            if isinstance(item, list):
-                blocks_list.extend(item)
-            else:
-                blocks_list.append(item)
-
-        # Process each block with existing logic
-        fade_animations = []
-        seen_lines = {}  # Track lines to avoid duplicates
-
-        for block in blocks_list:
-            # Handle both string names and block references
-            if isinstance(block, str):
-                target_block = self.get_block(block)
-                if target_block is None:
-                    continue
-            else:
-                target_block = block
-
-            # Create fade animation for this block
-            fade_animations.extend(target_block.visual_block.create_fade_animation())
-
-            # Fade parent lines (with deduplication)
-            for line in target_block.visual_block.parent_lines:
-                line_id = id(line)
-                if line_id not in seen_lines:
-                    fade_animations.append(
-                        line.animate.set_stroke(opacity=self.config.fade_opacity)
-                    )
-                    seen_lines[line_id] = True
-
-            # Fade child lines (with deduplication)
-            for child in target_block.children:
-                for line in child.visual_block.parent_lines:
-                    if line.parent_block == target_block.visual_block.square:
-                        line_id = id(line)
-                        if line_id not in seen_lines:
-                            fade_animations.append(
-                                line.animate.set_stroke(opacity=self.config.fade_opacity)
-                            )
-                            seen_lines[line_id] = True
-
-        # Play all fade animations together
-        if fade_animations:
-            self.scene.play(*fade_animations)
-
     def fade_except_past(self, focused_block: KaspaLogicalBlock | str) -> None:
         """Fade all blocks except the focused block and its past cone.
 
@@ -371,7 +321,7 @@ class KaspaDAG:
 
         # Use the existing fade function with deduplication
         if blocks_to_fade:
-            self.fade(blocks_to_fade)
+            self.fade_blocks(blocks_to_fade)
 
     ########################################
     # Highlighting GHOSTDAG
@@ -1122,39 +1072,6 @@ class KaspaDAG:
 
         return created_blocks
 
-    def fade_blocks(self, blocks: List[KaspaLogicalBlock | str]) -> None:
-        """Fade specified blocks to config.fade_opacity.
-
-        Args:
-            blocks: List of block names (supports fuzzy matching) or KaspaLogicalBlock instances
-        """
-        if not blocks:
-            return
-
-        fade_animations = []
-
-        for block in blocks:
-            # Handle both string names and block references
-            if isinstance(block, str):
-                target_block = self.get_block(block)
-                if target_block is None:
-                    continue
-            else:
-                target_block = block
-
-                # Add fade animations for this block
-            fade_animations.extend(target_block.visual_block.create_fade_animation())
-
-            # Also fade parent lines
-            for line in target_block.visual_block.parent_lines:
-                fade_animations.append(
-                    line.animate.set_stroke(opacity=self.config.fade_opacity)
-                )
-
-                # Play all fade animations simultaneously
-        if fade_animations:
-            self.scene.play(*fade_animations)
-
     def clear_all_blocks(self) -> None:
         """Remove all blocks from the scene and reset DAG state."""
         if not self.all_blocks:
@@ -1223,6 +1140,109 @@ class KaspaDAG:
             self.scene.camera.frame.animate.move_to(ORIGIN),
             run_time=self.config.camera_follow_time
         )
+
+    def fade_blocks(self, *blocks: KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]) -> None:
+        """Fade multiple blocks with their lines and play animations."""
+        # Step 1: Flatten mixed arguments and resolve blocks
+        blocks_list = []
+        for item in blocks:
+            if isinstance(item, list):
+                blocks_list.extend(item)
+            else:
+                blocks_list.append(item)
+
+        resolved_blocks = []
+        invalid_names = []
+
+        for block in blocks_list:
+            if isinstance(block, str):
+                resolved_block = self.get_block(block)
+                if resolved_block:
+                    resolved_blocks.append(resolved_block)
+                else:
+                    invalid_names.append(block)
+            else:
+                resolved_blocks.append(block)
+
+                # Warn user about invalid block names
+        if invalid_names:
+            logger.warning(f"Blocks not found during kaspaDAG.fade_out_blocks() and will be ignored: {invalid_names}")
+
+        # Step 2: Set intended state on all blocks being faded
+        for block in resolved_blocks:
+            block.visual_block.is_faded = True
+
+        # Step 3: Create animations with line handling
+        all_animations = []
+        for block in resolved_blocks:
+            # Add block fade animations
+            all_animations.extend(block.create_fade_animation())
+
+            # Add parent line fade animations
+            all_animations.extend(block.create_parent_line_fade_animations())
+
+            # Add child line fade animations
+            for logical_child in block.children:
+                for line in logical_child.parent_lines:
+                    if line.parent_block == block.square:
+                        all_animations.append(
+                            line.animate.set_stroke(opacity=self.config.fade_opacity)
+                        )
+
+        # Step 4: Play animations directly
+        if all_animations:
+            self.scene.play(*all_animations)
+
+    def unfade_blocks(self, *blocks):
+        """Unfade multiple blocks with their lines and play animations."""
+        # Step 1: Resolve blocks (handle both instances and names with fuzzy matching)
+        resolved_blocks = []
+        invalid_names = []
+
+        for block in blocks:
+            if isinstance(block, str):
+                resolved_block = self.get_block(block)
+                if resolved_block:
+                    resolved_blocks.append(resolved_block)
+                else:
+                    invalid_names.append(block)
+            else:
+                resolved_blocks.append(block)
+
+        # Warn user about invalid block names
+        if invalid_names:
+            logger.warning(f"Blocks not found during kaspaDAG.unfade_out_blocks() and will be ignored: {invalid_names}")
+
+        # Step 2: Set intended state on all blocks being unfaded
+        for block in resolved_blocks:
+            block.visual_block.is_faded = False
+
+        # Step 3: Create animations with line filtering
+        all_animations = []
+        for block in resolved_blocks:
+            # Add block unfade animations
+            all_animations.extend(block.create_unfade_animation())
+
+            # Add parent line unfade animations (only if parent is also unfaded)
+            for i, line in enumerate(block.parent_lines):
+                parent_block = block.parents[i]
+                if not parent_block.visual_block.is_faded:
+                    all_animations.append(
+                        line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
+                    )
+
+            # Add child line unfade animations (only if child is also unfaded)
+            for logical_child in block.children:
+                if not logical_child.visual_block.is_faded:
+                    for line in logical_child.parent_lines:
+                        if line.parent_block == block.square:
+                            all_animations.append(
+                                line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
+                            )
+
+        # Step 4: Play animations directly
+        if all_animations:
+            self.scene.play(*all_animations)
 
     ####################
     # Virtual Block # TODO destroy and create a new virtual block any time a new block is added to the dag (if desired by user)
