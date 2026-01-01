@@ -1144,7 +1144,29 @@ class KaspaDAG:
         )
 
     def fade_blocks(self, *blocks: KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]) -> None:
-        """Fade multiple blocks with their lines and play animations."""
+        """Fade multiple blocks with their lines and play animations.
+
+        This function reduces the opacity of blocks and their connecting lines to
+        create a visual highlighting effect. It handles mixed argument types and
+        comprehensively fades all connected lines regardless of the faded state
+        of connected blocks.
+
+        Parameters
+        ----------
+        *blocks : KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]
+            Variable number of block arguments. Each can be:
+            - A KaspaLogicalBlock instance
+            - A string name of a block (with fuzzy matching)
+            - A list containing any mix of the above types
+
+        Notes
+        -----
+        - All parent lines from faded blocks are faded regardless of parent state
+        - All child lines pointing to faded blocks are faded regardless of child state
+        - Invalid block names are logged as warnings and ignored
+        - Uses config.fade_opacity for the target faded opacity
+        - Sets block.visual_block.is_faded = True for state tracking
+        """
         # Step 1: Flatten mixed arguments and resolve blocks
         blocks_list = []
         for item in blocks:
@@ -1166,7 +1188,7 @@ class KaspaDAG:
             else:
                 resolved_blocks.append(block)
 
-                # Warn user about invalid block names
+        # Warn user about invalid block names
         if invalid_names:
             logger.warning(f"Blocks not found during kaspaDAG.fade_out_blocks() and will be ignored: {invalid_names}")
 
@@ -1195,13 +1217,40 @@ class KaspaDAG:
         if all_animations:
             self.scene.play(*all_animations)
 
-    def unfade_blocks(self, *blocks):
-        """Unfade multiple blocks with their lines and play animations."""
-        # Step 1: Resolve blocks (handle both instances and names with fuzzy matching)
+    def unfade_blocks(self, *blocks: KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]) -> None:
+        """Unfade multiple blocks with their lines and play animations.
+
+        This function restores blocks and their connecting lines from a faded state
+        back to full opacity. It handles mixed argument types (instances, names, lists)
+        and intelligently manages line visibility based on the faded state of connected blocks.
+
+        Parameters
+        ----------
+        *blocks : KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]
+            Variable number of block arguments. Each can be:
+            - A KaspaLogicalBlock instance
+            - A string name of a block (with fuzzy matching)
+            - A list containing any mix of the above types
+
+        Notes
+        -----
+        - Parent lines are only unfaded if their parent block is also unfaded
+        - Child lines are only unfaded if their child block is also unfaded
+        - Invalid block names are logged as warnings and ignored
+        - Uses config.line_stroke_opacity for restored line opacity
+        """
+        # Step 1: Flatten mixed arguments and resolve blocks
+        blocks_list = []
+        for item in blocks:
+            if isinstance(item, list):
+                blocks_list.extend(item)
+            else:
+                blocks_list.append(item)
+
         resolved_blocks = []
         invalid_names = []
 
-        for block in blocks:
+        for block in blocks_list:
             if isinstance(block, str):
                 resolved_block = self.get_block(block)
                 if resolved_block:
@@ -1213,20 +1262,20 @@ class KaspaDAG:
 
         # Warn user about invalid block names
         if invalid_names:
-            logger.warning(f"Blocks not found during kaspaDAG.unfade_out_blocks() and will be ignored: {invalid_names}")
+            logger.warning(f"Blocks not found during kaspaDAG.unfade_blocks() and will be ignored: {invalid_names}")
 
         # Step 2: Set intended state on all blocks being unfaded
         for block in resolved_blocks:
             block.visual_block.is_faded = False
 
-        # Step 3: Create animations with line filtering
+        # Step 3: Create animations with conditional line handling
         all_animations = []
         for block in resolved_blocks:
             # Add block unfade animations
             all_animations.extend(block.create_unfade_animation())
 
             # Add parent line unfade animations (only if parent is also unfaded)
-            for i, line in enumerate(block.parent_lines):
+            for i, line in enumerate(block.visual_block.parent_lines):
                 parent_block = block.parents[i]
                 if not parent_block.visual_block.is_faded:
                     all_animations.append(
@@ -1236,7 +1285,7 @@ class KaspaDAG:
             # Add child line unfade animations (only if child is also unfaded)
             for logical_child in block.children:
                 if not logical_child.visual_block.is_faded:
-                    for line in logical_child.parent_lines:
+                    for line in logical_child.visual_block.parent_lines:
                         if line.parent_block == block.square:
                             all_animations.append(
                                 line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
