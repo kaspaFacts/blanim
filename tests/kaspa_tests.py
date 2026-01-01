@@ -1002,7 +1002,7 @@ class GHOSTDAGExample(HUD2DScene):
 
 
 class GHOSTDAGFig3kExplained(HUD2DScene):
-    """GHOSTDAG Fig 3 from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21', animated, k explained version"""
+    """GHOSTDAG Fig 3 from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21', animated k explained version"""
 
     def construct(self):
         dag = KaspaDAG(scene=self)
