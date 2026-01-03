@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, Any
 
 import numpy as np
 from manim import AnimationGroup, Create, BackgroundRectangle, ShowPassingFlash, cycle_animation, Animation, \
-    UpdateFromAlphaFunc
+    UpdateFromAlphaFunc, RED
 
 from ... import BaseVisualBlock, ParentLine
 
@@ -133,6 +133,7 @@ class KaspaVisualBlock(BaseVisualBlock):
         super().__init__(label_text, position, config)
 
         self.kaspa_config = config
+        self.is_faded = False
         # Handle parent lines with config
         if parents:
             self.parent_lines = []
@@ -143,7 +144,8 @@ class KaspaVisualBlock(BaseVisualBlock):
                     self.square,
                     parent.square,
                     line_color=line_color,
-                    is_selected_parent_line=is_selected
+                    is_selected_parent_line=is_selected,
+                    stroke_width=config.line_stroke_width
                 )
                 self.parent_lines.append(parent_line)
         else:
@@ -348,7 +350,7 @@ class KaspaVisualBlock(BaseVisualBlock):
         # Wrap with line updates using existing method
         return self.create_movement_animation(base_animation)
 
-    def create_fade_animation(self) -> list[Any]:
+    def create_fade_animation(self) -> list[Animation]:
         """Create animations to fade this block using config opacity."""
 
         # Special handling required for labels due to use of Transform
@@ -369,15 +371,54 @@ class KaspaVisualBlock(BaseVisualBlock):
             return mob
 
         return [
-            self.square.animate.set_fill(opacity=self.kaspa_config.fade_opacity),
-            self.square.animate.set_stroke(opacity=self.kaspa_config.fade_opacity),
+            self.square.animate.set_fill(opacity=self.kaspa_config.fade_opacity).set_stroke(opacity=self.kaspa_config.fade_opacity),
+            self.background_rect.animate.set_fill(opacity=self.kaspa_config.fade_opacity),
             UpdateFromAlphaFunc(self.label, fade_label) # type: ignore
+        ]
+
+    def create_unfade_animation(self) -> list[Animation]:
+        """Create animations to restore this block to normal opacity from config."""
+
+        # Special handling required for labels due to use of Transform
+        def unfade_label(mob, alpha):
+            # Get current opacity values for all submobjects
+            start_opacities = {}
+            for submob in mob.submobjects:
+                start_opacities[submob] = submob.get_fill_opacity()
+
+                # Only animate submobjects that are currently visible
+            for submob in mob.submobjects:
+                if start_opacities[submob] > 0:  # Only affect visible submobjects
+                    # Interpolate from current opacity to target opacity
+                    current_opacity = start_opacities[submob]
+                    target_opacity = self.kaspa_config.label_opacity
+                    new_opacity = current_opacity + alpha * (target_opacity - current_opacity)
+                    submob.set_fill(opacity=new_opacity, family=False)
+            return mob
+
+        return [
+            self.square.animate.set_fill(opacity=self.kaspa_config.fill_opacity).set_stroke(opacity=self.kaspa_config.stroke_opacity),
+            self.background_rect.animate.set_fill(opacity=self.kaspa_config.bg_rect_opacity),
+            UpdateFromAlphaFunc(self.label, unfade_label)  # type: ignore
         ]
 
     def create_highlight_animation(self, color=None, stroke_width=None) -> Any:
         """Create animation to highlight this block's stroke using config."""
         return self.square.animate.set_stroke(
             self.kaspa_config.highlight_block_color,
+            width=self.kaspa_config.highlight_stroke_width
+        )
+
+    def reset_block_stroke(self):#TODO probably remove this and use create_reset_animation, if no use for partial resets are found
+        """Reset Block Stroke to config default"""
+        return self.square.animate.set_stroke(
+            color=self.kaspa_config.stroke_color,
+            width=self.kaspa_config.stroke_width
+        )
+
+    def highlight_stroke_red(self):
+        return self.square.animate.set_stroke(
+            color = RED,
             width=self.kaspa_config.highlight_stroke_width
         )
 
@@ -429,7 +470,7 @@ class KaspaVisualBlock(BaseVisualBlock):
             UpdateFromAlphaFunc(self.label, reset_label) # type: ignore
         ]
 
-    def create_line_fade_animations(self) -> list[Any]:
+    def create_parent_line_fade_animations(self) -> list[Any]:
         """Create animations to fade all parent lines."""
         return [
             line.animate.set_stroke(opacity=self.kaspa_config.fade_opacity)

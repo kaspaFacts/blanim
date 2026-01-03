@@ -2,6 +2,7 @@
 
 from blanim import *
 
+
 # user created theme to change parameters of the dag, visual appearance, ect with typehinting
 def test_theme() -> KaspaConfig:
     """Test theme with various configuration parameters."""
@@ -751,75 +752,695 @@ class TestNormalConditions(HUD2DScene):
 #        dag.set_k(18)
 
         self.wait(1)
-        self.narrate("GHOSTDAG Under Changing Delay, 1 BPS, k=18", run_time=1.0)
-        self.caption("These first 20 seconds, network delay is normal, 350ms.", run_time=1.0)
-        blocks1 = dag.simulate_blocks(20, 1, 350)
-        dag.create_blocks_from_simulator_list(blocks1)
+        self.narrate("GHOSTDAG, 1 BPS, k=18", run_time=1.0)
+        self.caption("Network Delay during this simulation is 5000ms.", run_time=1.0)
+        blocks1 = dag.simulate_blocks(30, 1, 5000)
+        dag.create_blocks_from_simulator_list_instant(blocks1)
 
-        self.caption("These next 20 seconds, network has degraded to half of max delay, 2500ms.", run_time=1.0)
-        blocks2 = dag.simulate_blocks(20, 1, 2500)
-        dag.create_blocks_from_simulator_list(blocks2)
+        dag.animate_ghostdag_process(context_block="4b", narrate=True)
 
-        self.caption("These next 20 seconds, network has degraded to max delay, 5000ms.", run_time=1.0)
-        blocks3 = dag.simulate_blocks(20, 1, 5000)
-        dag.create_blocks_from_simulator_list(blocks3)
-
-        self.caption("These next 20 seconds, network has improved to half of max delay, 2500ms.", run_time=1.0)
-        blocks4 = dag.simulate_blocks(20, 1, 2500)
-        dag.create_blocks_from_simulator_list(blocks4)
-
-        self.caption("These next 20 seconds, network delay has recovered to normal, 350ms.", run_time=1.0)
-        blocks5 = dag.simulate_blocks(20, 1, 350)
-        dag.create_blocks_from_simulator_list(blocks5)
-
-        self.caption("No orphan(Red) blocks, even under degraded conditions, Security Maintained.", run_time=1.0)
-        dag.add_block(dag.get_current_tips())
         self.wait(3)
 
-        # Add the new parent chain highlighting at the end
-        self.wait(1)
-        self.caption("Highlighting Selected Parent Chain back to Genesis", run_time=1.0)
-        self.wait(1)
-        dag.highlight_and_scroll_parent_chain(scroll_speed_factor=0.6)
-        self.wait(1)
+        # self.caption("These next 20 seconds, network has degraded to half of max delay, 2500ms.", run_time=1.0)
+        # blocks2 = dag.simulate_blocks(20, 1, 2500)
+        # dag.create_blocks_from_simulator_list(blocks2)
+        #
+        # self.caption("These next 20 seconds, network has degraded to max delay, 5000ms.", run_time=1.0)
+        # blocks3 = dag.simulate_blocks(20, 1, 5000)
+        # dag.create_blocks_from_simulator_list(blocks3)
+        #
+        # self.caption("These next 20 seconds, network has improved to half of max delay, 2500ms.", run_time=1.0)
+        # blocks4 = dag.simulate_blocks(20, 1, 2500)
+        # dag.create_blocks_from_simulator_list(blocks4)
+        #
+        # self.caption("These next 20 seconds, network delay has recovered to normal, 350ms.", run_time=1.0)
+        # blocks5 = dag.simulate_blocks(20, 1, 350)
+        # dag.create_blocks_from_simulator_list(blocks5)
+        #
+        # self.caption("No orphan(Red) blocks, even under degraded conditions, Security Maintained.", run_time=1.0)
+        # dag.add_block(dag.get_current_tips())
+        # self.wait(3)
 
-# TODO troubleshoot showing GHOSTDAG
-class TestGHOSTDAGProcess(HUD2DScene):
-    """Test GhostDAG process visualization in DAG structure."""
+        # # Add the new parent chain highlighting at the end
+        # self.wait(1)
+        # self.caption("Highlighting Selected Parent Chain back to Genesis", run_time=1.0)
+        # self.wait(1)
+        # dag.traverse_parent_chain_with_right_fade(scroll_speed_factor=0.6)
+        # self.wait(2)
+
+#TODO ensure when fading block, the bgrect is also faded
+class GHOSTDAGExample(HUD2DScene):
+    """GHOSTDAG Example from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21'."""
 
     def construct(self):
         dag = KaspaDAG(scene=self)
-
-        # Create structure with clear anticone
-        genesis = dag.add_block()
-        b1 = dag.add_block(parents=[genesis])
-        b2 = dag.add_block(parents=[genesis])
-        b3 = dag.add_block(parents=[b1])
-        b4 = dag.add_block(parents=[b2])
-        b5 = dag.add_block(parents=[genesis])
-        b6 = dag.add_block(parents=[b5])
-
-        # Add merge block connecting both branches
-        merge = dag.add_block(parents=[b3, b4, b6])
-
-        # Add one more block after merge
-        final = dag.add_block(parents=[merge])
+        dag.set_k(3)
+        animation_wait_time = 2.5
+        animation_coloring_time = 1.0
 
         self.wait(1)
+        self.narrate("Kaspa - GHOSTDAG (first draft - incomplete)", run_time=1.0)
 
-        # Show GhostDAG process for b3 (demonstrates parent selection and blue candidate evaluation)
-        self.caption("Showing GhostDAG process for block b3")
-        dag.animate_ghostdag_process(b3, narrate=True, step_delay=1.0)
-        self.wait(2)
+        genesis_block = dag.add_block(name = "Gen")
 
-        # Show GhostDAG process for merge (demonstrates mergeset with multiple parents)
-        self.caption("Showing GhostDAG process for merge block")
-        dag.animate_ghostdag_process(merge, narrate=True, step_delay=1.0)
-        self.wait(2)
+        self.caption("Figure 3 from PHANTOM GHOSTDAG animated.", run_time=1.0)
+        self.wait(animation_wait_time)
+        dag.add_virtual_to_scene()
+        self.caption(r"When DAG == \{Gen\} then return [\{Gen\},\{Gen\}]", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption(r"Or when DAG is Genesis, \{Gen\} is Blue, and order is \{Gen\}", run_time=1.0)
+        self.play(genesis_block.set_block_blue(), run_time=animation_coloring_time)
+        self.narrate(r"k=3 \{Gen\}")
+        self.wait(animation_wait_time)
 
-        text = Text("GhostDAG Process Test Passed", color=GREEN).to_edge(UP)
-        self.play(Write(text))
-        self.wait(2)
+        self.reset_scene_and_wait(dag)
+
+        block_e, block_d, block_c, block_b = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("E", ["Gen"], "E"),
+            ("D", ["Gen"], "D"),
+            ("C", ["Gen"], "C"),
+            ("B", ["Gen"], "B"),
+        ])
+        # Force fixed ordering by lowest hash, order = D, C, E, B
+        block_e.hash = 2
+        block_d.hash = 0 # Force block D as SP when tiebreaking
+        block_c.hash = 1
+        block_b.hash = 3
+
+        self.caption("Add Virtual to close the DAG...", run_time=1.0)
+        self.wait(animation_wait_time)
+
+        virtual = dag.add_virtual_to_scene()
+
+        self.caption("All Tips have the same Blue Score so ties are broken using Lowest Hash", run_time=1.0)
+        self.play(block_d.change_label(block_d.ghostdag.blue_score))
+        self.play(block_c.change_label(block_c.ghostdag.blue_score))
+        self.play(block_e.change_label(block_e.ghostdag.blue_score))
+        self.play(block_b.change_label(block_b.ghostdag.blue_score))
+        self.wait(animation_wait_time)
+        self.caption("This makes ordering Deterministic with Cryptographic Randomness", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Virtual Selected Parent has the Lowest Hash", run_time=1.0)
+        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.narrate(r"k=3 \{Gen, D\}")
+        self.wait(animation_wait_time)
+        self.caption("Selected Parent is Blue", run_time=1.0)
+        self.play(block_d.set_block_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.caption("Mergeset is then ordered by Blue Score", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("With Ties broken by Lowest Hash", run_time=1.0)
+        self.narrate(r"k=3 \{Gen, D, C, E, B\}")
+        self.wait(animation_wait_time)
+        self.caption("Each block is checked for k-cluster violations when k=3", run_time=1.0)
+        self.play(AnimationGroup(
+            block_d.change_label("D"),
+            block_c.change_label("C"),
+            block_e.change_label("E"),
+            block_b.change_label("B"),
+        ))
+        self.wait(animation_wait_time)
+
+        self.caption("Starting with Block C", run_time=1.0)
+        self.play(block_c.set_block_stroke_yellow())
+        self.wait(animation_wait_time)
+        self.caption("Block C has only one Blue in its Anticone, Block D", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block D will only have one Blue in its Anticone if Block C is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block C does not violate k-Cluster rules, Block C becomes Blue", run_time=1.0)
+        self.play(block_c.set_block_blue())
+        self.wait(animation_wait_time)
+
+        self.caption("Moving to Block E", run_time=1.0)
+        self.play(block_e.set_block_stroke_yellow())
+        self.wait(animation_wait_time)
+        self.caption("Block E has only two Blue in its Anticone, Block D and Block C", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block D will only have two Blue in its Anticone if Block E is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block C will only have two Blue in its Anticone if Block E is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block E does not violate k-Cluster rules, Block E becomes Blue", run_time=1.0)
+        self.play(block_e.set_block_blue())
+        self.wait(animation_wait_time)
+
+        self.caption("Moving to Block B", run_time=1.0)
+        self.play(block_b.set_block_stroke_yellow())
+        self.wait(animation_wait_time)
+        self.caption("Block B has only three Blue in its Anticone, Block D, Block C, and Block E", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block D will only have three Blue in its Anticone if Block B is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block C will only have three Blue in its Anticone if Block B is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block E will only have three Blue in its Anticone if Block B is Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption("Block B does not violate k-Cluster rules, Block B becomes Blue", run_time=1.0)
+        self.play(block_b.set_block_blue())
+        self.wait(animation_wait_time)
+
+        self.caption("All Blue Candidates pass and become Blue", run_time=1.0)
+        self.wait(animation_wait_time)
+        self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
+        self.wait(animation_wait_time)
+
+        self.reset_scene_and_wait(dag)
+
+        block_i, block_h, block_f = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("I", ["E"], "I"),
+            ("H", ["C", "D", "E"], "H"),
+            ("F", ["B", "C"], "F"),
+        ])
+        self.clear_narrate()
+        self.caption("Add Virtual to close the DAG...", run_time=1.0)
+        self.wait(animation_wait_time)
+
+        virtual = dag.add_virtual_to_scene()
+
+        self.caption("Inspect Virtual Parents by Blue Score", run_time=1.0)
+        self.play(block_i.change_label(block_i.ghostdag.blue_score))
+        self.play(block_h.change_label(block_h.ghostdag.blue_score))
+        self.play(block_f.change_label(block_f.ghostdag.blue_score))
+        self.wait(animation_wait_time)
+
+        self.caption("Virtual Selected Parent has the highest Blue Score", run_time=1.0)
+        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Selected Parent is always blue, and is added to the order", run_time=1.0)
+        self.play(block_h.set_block_blue())
+        self.narrate(r"k=3 \{Gen, D, C, E, H\}")
+        self.wait(animation_wait_time)
+
+
+        self.caption(f"Virtual blue score: {virtual.ghostdag.blue_score}", run_time=1.0)
+
+        dag.highlight(["H"])
+        dag.fade_blocks("F","B","I")
+        dag.highlight(["D"])
+        dag.fade_blocks("C","E")
+        dag.highlight(["Gen"])
+        self.wait(animation_wait_time)
+        dag.reset_highlighting()
+        self.clear_caption()
+        dag.destroy_virtual_block()
+        self.wait(animation_wait_time)
+
+        other_other_blocks = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("L", ["I", "D"]),
+            ("K", ["B", "H", "I"]),
+            ("J", ["F", "H"]),
+        ])
+
+        # self.caption("Caption", run_time=1.0)
+        # self.wait(animation_wait_time)
+        # other_other_blocks[2].hash = 0
+        # dag.add_virtual_to_scene()
+        # self.caption(f"Virtual blue score: {dag.virtual_block.ghostdag.blue_score}", run_time=1.0)
+        # dag.highlight(["J"])
+        # dag.fade("K", "L", "I")
+        # dag.highlight(["H"])
+        # dag.fade("F","B","I")#TODO does fading an already faded block break it?
+        # dag.highlight(["D"])
+        # dag.fade(block_e, ["C", "B"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
+        # dag.highlight(["Gen"])
+        # self.wait(animation_wait_time)
+        # dag.reset_highlighting()
+        # self.clear_caption()
+        # dag.destroy_virtual_block()
+        # self.wait(animation_wait_time)
+        #
+        # block_m = dag.add_block(parents = [other_other_blocks[1], other_blocks[2]],name = "M")
+        #
+        # self.caption("Caption ", run_time=1.0)
+        # self.wait(animation_wait_time)
+        # dag.add_virtual_to_scene()
+        # self.caption(f"Virtual blue score: {dag.virtual_block.ghostdag.blue_score}", run_time=1.0)
+        # dag.highlight(block_m)
+        # dag.fade("J", "L")
+        # dag.highlight("K")
+        # dag.fade("F")
+        # dag.highlight(["H"])
+        # dag.fade("B","I")
+        # dag.highlight(["D"])
+        # dag.fade(["C", "E"])  # Fade and Highlight allow any combination of block instance, block name, or lists of either
+        # dag.highlight(["Gen"])
+        # self.wait(animation_wait_time)
+        # dag.reset_highlighting()
+        #
+        # self.caption("Caption ", run_time=1.0)
+        self.wait(animation_wait_time)
+
+    def reset_scene_and_wait(self, dag):
+        """Reset highlighting, clear caption, destroy virtual block, and wait."""
+        cleanup_wait_time = 1.0
+
+        self.clear_caption()
+        dag.destroy_virtual_block()
+        self.wait(cleanup_wait_time)
+
+
+class GHOSTDAGFig3kExplained(HUD2DScene):
+    """GHOSTDAG Fig 3 from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21', animated k explained version"""
+
+    def construct(self):
+        dag = KaspaDAG(scene=self)
+        dag.set_k(3)
+        animation_wait_time = 5.0
+        animation_coloring_time = 1.0
+        caption_time = 1.0
+
+        self.wait(1)
+        self.narrate("PHANTOM GHOSTDAG (fig 3)", run_time=caption_time)
+
+        block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_l, block_k, block_j, block_m = dag.create_blocks_from_list_instant_with_vertical_centering([
+            ("Gen", None, "Gen"),
+            ("E", ["Gen"], "E", 2),
+            ("D", ["Gen"], "D", 0),
+            ("C", ["Gen"], "C", 1),
+            ("B", ["Gen"], "B"),
+            ("I", ["E"], "I"),
+            ("H", ["D", "C", "E"], "H"),
+            ("F", ["B", "C"], "F"),
+            ("L", ["I", "D"], "L"),
+            ("K", ["B", "H", "I"], "K"),
+            ("J", ["F", "H"], "J"),
+            ("M", ["K", "F"], "M")
+        ])
+
+        virtual = dag.add_virtual_to_scene()
+
+        self.caption("GHOSTDAG: Selecting Chain with highest Blue Scores", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        ##########
+        # First check
+        ##########
+
+        dag.fade_blocks(block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_k)
+        self.caption("Tips M, J, L compete - highest Blue Score wins", run_time=caption_time)
+        self.play(block_m.change_label(block_m.ghostdag.blue_score))
+        self.play(block_j.change_label(block_j.ghostdag.blue_score))
+        self.play(block_l.change_label(block_l.ghostdag.blue_score))
+        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.caption("M selected: highest Blue Score among Tips", run_time=caption_time)
+        self.play(block_m.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_m.change_label(block_m.name))
+        self.play(block_j.change_label(block_j.name))
+        self.play(block_l.change_label(block_l.name))
+        self.clear_caption()
+
+        ##########
+        # Reset for next check
+        ##########
+
+        dag.fade_blocks(block_j, block_l)
+        dag.unfade_blocks(block_k, block_f)
+        self.play(block_k.change_label(block_k.ghostdag.blue_score))
+        self.play(block_f.change_label(block_f.ghostdag.blue_score))
+        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.caption("K selected: highest Blue Score Parent of M", run_time=caption_time)
+        self.play(block_k.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_k.change_label(block_k.name))
+        self.play(block_f.change_label(block_f.name))
+        self.clear_caption()
+
+        ##########
+        # Reset for next check
+        ##########
+
+        dag.fade_blocks(block_f)
+        dag.unfade_blocks(block_h, block_i, block_b)
+        self.play(block_h.change_label(block_h.ghostdag.blue_score))
+        self.play(block_i.change_label(block_i.ghostdag.blue_score))
+        self.play(block_b.change_label(block_b.ghostdag.blue_score))
+        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.caption("H selected: highest Blue Score Parent of K", run_time=caption_time)
+        self.play(block_h.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.play(block_h.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_h.change_label(block_h.name))
+        self.play(block_i.change_label(block_i.name))
+        self.play(block_b.change_label(block_b.name))
+        self.clear_caption()
+
+        ##########
+        # Reset for next check
+        ##########
+
+        dag.fade_blocks(block_b, block_i)
+        dag.unfade_blocks(block_d, block_c, block_e)
+        self.play(block_d.change_label(block_d.ghostdag.blue_score))
+        self.play(block_c.change_label(block_c.ghostdag.blue_score))
+        self.play(block_e.change_label(block_e.ghostdag.blue_score))
+        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.caption("D selected: breaks C, D, E tie by hash (deterministic)", run_time=caption_time)
+        self.play(block_d.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_d.change_label(block_d.name))
+        self.play(block_c.change_label(block_c.name))
+        self.play(block_e.change_label(block_e.name))
+        self.clear_caption()
+
+        ##########
+        # Reset for next check
+        ##########
+
+        dag.fade_blocks(block_c, block_e)
+        dag.unfade_blocks(block_gen)
+        self.play(block_gen.change_label(block_gen.ghostdag.blue_score))
+        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.caption("Genesis selected: root of the chain", run_time=caption_time)
+        self.play(block_gen.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+        self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_gen.change_label(block_gen.name))
+        self.wait(animation_wait_time)
+
+        ##########
+        # Build Blue Set WITH k-cluster checks #TODO Automate this somehow
+        ##########
+
+        self.caption("Building Blue Set: start with empty set", run_time=caption_time)
+        self.narrate(r"Blue Set k=3 \{\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        # SP Blue
+        dag.fade_blocks(block_h, block_k, block_m, virtual)
+
+        self.caption("Visit D: add Genesis: Selected Parent Blue by default", run_time=caption_time)
+        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # SP Blue
+        dag.unfade_blocks(block_h, block_c, block_e)
+
+        self.caption("Visit H: add D: Selected Parent Blue by default", run_time=caption_time)
+        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_c
+        self.caption("Blue Candidate C: first in Mergeset, first checked", run_time=caption_time)
+        self.play(block_c.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate C: has 1 Blue in Anticone", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate C: 1 $\leq$ k :Passed first check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate C: if C is Blue, D has 1 Anticone Blue", run_time=caption_time)
+        self.play(block_c.change_label("1"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate C: 1 $\leq$ k :Passed second check", run_time=caption_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate C: becomes Blue", run_time=caption_time)
+        self.play(block_c.set_block_blue(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_c.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_e
+        self.caption("Blue Candidate E: next in Mergeset, next checked", run_time=caption_time)
+        self.play(block_e.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate E: has 2 Blue in Anticone", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_c.change_label("2"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate E: 2 $\leq$ k :Passed first check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate E: if E is Blue, D has 2 Anticone Blues", run_time=caption_time)
+        self.play(block_c.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_e.change_label("2"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate E: 2 $\leq$ k :Passed this second check", run_time=caption_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate E: if E is Blue, C has 2 Anticone Blues", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_e.change_label("2"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate E: 2 $\leq$ k :Passed this second check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate E: becomes Blue", run_time=caption_time)
+        self.play(block_e.set_block_blue(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_e.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # SP Blue
+        dag.unfade_blocks(block_k, block_b, block_i)
+
+        self.caption("Visit K: add H: Selected Parent Blue by default", run_time=caption_time)
+        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_h.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_b
+        self.caption("Blue Candidate B: first in Mergeset, first checked", run_time=caption_time)
+        self.play(block_b.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate B: has 4 Blues in Anticone", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_c.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_e.change_label("3"), run_time=animation_coloring_time)
+        self.play(block_h.change_label("4"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate B: 4 > k :Failed first check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
+        self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate B: becomes Red", run_time=caption_time)
+        self.play(block_b.set_block_red(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_b.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_i
+        self.caption("Blue Candidate I: next in Mergeset, next checked", run_time=caption_time)
+        self.play(block_i.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate I: has 3 Blues in Anticone", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_c.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_h.change_label("3"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate I: 3 $\leq$ k :Passed first check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate I: if I is Blue, D has 3 Anticone Blues", run_time=caption_time)
+        self.play(block_c.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_e.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_i.change_label("3"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate I: 3 $\leq$ k :Passed this second check", run_time=caption_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
+        self.play(block_i.change_label(block_i.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate I: if I is Blue, C has 3 Anticone Blues", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_e.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_i.change_label("2"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate I: 3 $\leq$ k :Passed this second check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
+        self.play(block_i.change_label(block_i.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate I: if I is Blue, H has 1 Anticone Blue", run_time=caption_time)
+        self.play(block_i.change_label("1"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate I: 1 $\leq$ k :Passed this second check", run_time=caption_time)
+        self.play(block_i.change_label(block_i.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate I: becomes Blue", run_time=caption_time)
+        self.play(block_i.set_block_blue(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set \{Gen, D, C, E, H, I\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_i.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # SP Blue
+        dag.unfade_blocks(block_m, block_f)
+
+        self.caption("Visit M: add K: Selected Parent Blue by default", run_time=caption_time)
+        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_f
+        self.caption("Blue Candidate F: first in Mergeset, first checked", run_time=caption_time)
+        self.play(block_f.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate F: has 5 Blues in Anticone", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_e.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_h.change_label("3"), run_time=animation_coloring_time)
+        self.play(block_i.change_label("4"), run_time=animation_coloring_time)
+        self.play(block_k.change_label("5"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate F: 5 > k :Failed first check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
+        self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
+        self.play(block_i.change_label(block_i.name), run_time=animation_coloring_time)
+        self.play(block_k.change_label(block_k.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate F: becomes Red", run_time=caption_time)
+        self.play(block_f.set_block_red(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_f.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # SP Blue
+        dag.unfade_blocks(virtual, block_j, block_l)
+
+        self.caption("Visit V: add M: Selected Parent Blue by default", run_time=caption_time)
+        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_l
+        self.caption("Blue Candidate L: first in Mergeset, first checked", run_time=caption_time)
+        self.play(block_l.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate L: has 4 Blues in Anticone", run_time=caption_time)
+        self.play(block_c.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_h.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_k.change_label("3"), run_time=animation_coloring_time)
+        self.play(block_m.change_label("4"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate L: 4 > k :Failed first check", run_time=caption_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
+        self.play(block_k.change_label(block_k.name), run_time=animation_coloring_time)
+        self.play(block_m.change_label(block_m.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate L: becomes Red", run_time=caption_time)
+        self.play(block_l.set_block_red(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        # Check block_j
+        self.caption("Blue Candidate J: next in Mergeset, next checked", run_time=caption_time)
+        self.play(block_j.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate J: has 3 Blues in Anticone", run_time=caption_time)
+        self.play(block_i.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_k.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_m.change_label("3"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate J: 3 $\leq$ k :Passed first check", run_time=caption_time)
+        self.play(block_i.change_label(block_i.name), run_time=animation_coloring_time)
+        self.play(block_k.change_label(block_k.name), run_time=animation_coloring_time)
+        self.play(block_m.change_label(block_m.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate J: if J is Blue, I has 4 Anticone Blues", run_time=caption_time)
+        self.play(block_d.change_label("1"), run_time=animation_coloring_time)
+        self.play(block_c.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_h.change_label("3"), run_time=animation_coloring_time)
+        self.play(block_j.change_label("4"), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption(r"Blue Candidate J: 4 > k :Failed this second check", run_time=caption_time)
+        self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
+        self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
+        self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
+        self.play(block_j.change_label(block_j.name), run_time=animation_coloring_time)
+        self.wait(animation_wait_time)
+
+        self.caption("Blue Candidate J: becomes Red", run_time=caption_time)
+        self.play(block_j.set_block_red(), run_time=animation_coloring_time)
+
+        self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
+        self.wait(animation_wait_time)
+        self.play(virtual.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.clear_caption()
+
+        self.wait(3.0)
+
+        #TODO when adding a block, and parents are already faded, need to introduce lines to faded blocks, as faded
+
 
 
 class TestHighlightingFutureWithAnticone(HUD2DScene):

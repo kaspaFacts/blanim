@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["KaspaLogicalBlock"]
+__all__ = ["KaspaLogicalBlock", "VirtualKaspaBlock"]
 
 import secrets
 from dataclasses import dataclass, field
@@ -34,7 +34,9 @@ class KaspaLogicalBlock:
             timestamp: Optional[float] = None,
             parents: Optional[List[KaspaLogicalBlock]] = None,
             position: tuple[float, float] = (0, 0),
-            config: _KaspaConfigInternal = None
+            config: _KaspaConfigInternal = None,
+            custom_label: Optional[str] = None,
+            custom_hash: Optional[int] = None
     ):
         if config is None:
             raise ValueError("config parameter is required")
@@ -45,7 +47,7 @@ class KaspaLogicalBlock:
         # Time Created
         self.timestamp = timestamp
         # Tie-breaker (instead of actually hashing, just use a random number like a cryptographic hash)
-        self.hash = secrets.randbits(32)  # 32-bit random integer to keep prob(collision) = low
+        self.hash = custom_hash if custom_hash is not None else secrets.randbits(32)  # 32-bit random integer to keep prob(collision) = low
 
         # DAG structure (single source of truth)
         self.parents = parents if parents else []
@@ -64,8 +66,12 @@ class KaspaLogicalBlock:
 
         # Create visual after GHOSTDAG computation
         parent_visuals = [p.visual_block for p in self.parents]
+
+        # Custom Label if passed
+        label_text = custom_label if custom_label is not None else str(self.ghostdag.blue_score)
+
         self._visual = KaspaVisualBlock(
-            label_text=str(self.ghostdag.blue_score),#TODO update this  NOTE: when passing an empty string, positioning breaks (fixed moving blocks by overriding move_to with only visual.square)
+            label_text=label_text,#TODO update this  NOTE: when passing an empty string, positioning breaks (fixed moving blocks by overriding move_to with only visual.square)
             position=position,
             parents=parent_visuals,
             config=self.config
@@ -255,3 +261,47 @@ class KaspaLogicalBlock:
         if attr == '_visual':
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '_visual'")
         return getattr(self._visual, attr)
+
+class VirtualKaspaBlock(KaspaLogicalBlock):
+    """Virtual block for GHOSTDAG template calculation with visual representation."""
+
+    def __init__(self, tips : List[KaspaLogicalBlock], v_config: _KaspaConfigInternal):
+
+        # Calculate position: right of tallest parent, at genesis_y
+        if not tips:
+            # No parents (empty DAG) - use genesis position
+            x_position = v_config.genesis_x
+            y_position = v_config.genesis_y
+        else:
+            # Find rightmost parent by x-position
+            rightmost_parent = max(tips, key=lambda p: p.visual_block.square.get_center()[0])
+            parent_pos = rightmost_parent.visual_block.square.get_center()
+            x_position = parent_pos[0] + v_config.horizontal_spacing
+            y_position = v_config.genesis_y  # Always at genesis level
+
+        # Initialize with calculated position
+        super().__init__(
+            name="__virtual__",
+            parents=tips,
+            position=(x_position, y_position),
+            config=v_config
+        )
+
+        # Override visual block with "V" label (same position)
+        parent_visuals = [p.visual_block for p in self.parents]
+        self._visual = KaspaVisualBlock(
+            label_text="V",
+            position=(x_position, y_position),
+            parents=parent_visuals,
+            config=v_config
+        )
+        self._visual.logical_block = self
+
+    def create_destroy_animation(self) -> list:
+        """Fade to complete invisibility using Manim's FadeOut."""
+        return [
+            self.visual_block.square.animate.set_opacity(0),
+            self.visual_block.background_rect.animate.set_opacity(0),
+            self.visual_block.label.animate.set_opacity(0),
+            *[line.animate.set_stroke(opacity=0) for line in self.visual_block.parent_lines]
+        ]

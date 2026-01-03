@@ -1,13 +1,16 @@
 # blanim\blanim\blockDAGs\kaspa\config.py
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import TypedDict
 
-from manim import BLUE, WHITE, ParsableManimColor, YELLOW, GREEN, PURPLE, RED, logger
-from ...core.base_config import BaseBlockConfig
+from manim import BLUE, WHITE, ParsableManimColor, YELLOW, GREEN, PURPLE, RED, logger, GRAY
+
+from ...core.base_visual_block import validate_protocol_attributes
 
 __all__ = ["DEFAULT_KASPA_CONFIG", "KaspaConfig", "_KaspaConfigInternal"]
 
+#TODO finish refactoring kaspa to use this consistently
+#TODO ensure parameters are identical in both
 
 # Public TypedDict for user type hints
 class KaspaConfig(TypedDict, total=False):
@@ -18,6 +21,7 @@ class KaspaConfig(TypedDict, total=False):
     # Visual Styling - Block Appearance
     block_color: ParsableManimColor
     fill_opacity: float
+    bg_rect_opacity: float
     stroke_color: ParsableManimColor
     stroke_width: float
     stroke_opacity: float
@@ -27,6 +31,7 @@ class KaspaConfig(TypedDict, total=False):
     label_font_size: int
     label_color: ParsableManimColor
     label_opacity: float
+    label_type: str #TODO figure out how to typehint this
 
     # Visual Styling - Line Appearance
     selected_parent_line_color: ParsableManimColor
@@ -76,7 +81,7 @@ class KaspaConfig(TypedDict, total=False):
     ghostdag_selected_fill: ParsableManimColor
 
 @dataclass
-class _KaspaConfigInternal(BaseBlockConfig):
+class _KaspaConfigInternal:
     """Complete configuration for Kaspa blockDAG visualization.
 
     Combines visual styling and spatial layout into a single config.
@@ -118,8 +123,9 @@ class _KaspaConfigInternal(BaseBlockConfig):
     # ========================================
     # VISUAL STYLING - Block Appearance
     # ========================================
-    block_color: ParsableManimColor = WHITE  #NOTE if block color is BLUE, the is no visible change during GHOSTDAG coloring animation.
-    fill_opacity: float = 0.3
+    block_color: ParsableManimColor = GRAY  #NOTE if block color is BLUE, the is no visible change during GHOSTDAG coloring animation.
+    fill_opacity: float = 0.9
+    bg_rect_opacity: float = 0.9
     stroke_color: ParsableManimColor = BLUE
     stroke_width: float = 3
     stroke_opacity: float = 1.0
@@ -131,13 +137,14 @@ class _KaspaConfigInternal(BaseBlockConfig):
     label_font_size: int = 24
     label_color: ParsableManimColor = WHITE
     label_opacity: float = 1.0
+    label_type: str = 'bluescore'
 
     # ========================================
     # VISUAL STYLING - Line Appearance
     # ========================================
     selected_parent_line_color: ParsableManimColor = BLUE
     other_parent_line_color: ParsableManimColor = WHITE
-    line_stroke_width: float = 5
+    line_stroke_width: float = 4
     line_stroke_opacity: float = 1.0
 
     # ========================================
@@ -157,11 +164,11 @@ class _KaspaConfigInternal(BaseBlockConfig):
     context_block_stroke_width: float = 8
 
     # Highlight blocks with relationships to the Context Block
-    highlight_block_color: ParsableManimColor = "#70C7BA"
+    highlight_block_color: ParsableManimColor = YELLOW
     highlight_line_color = YELLOW
     highlight_stroke_width: float = 8
 
-    fade_opacity: float = 0.1 # Opacity to fade unrelated blocks(and lines) to during a highlight animation
+    fade_opacity: float = 0.2 # Opacity to fade unrelated blocks(and lines) to during a highlight animation
 
     flash_connections: bool = True # Directional flash animation cycling on lines
     highlight_line_cycle_time = 1 # Time for a single flash to pass on lines
@@ -178,8 +185,16 @@ class _KaspaConfigInternal(BaseBlockConfig):
     horizontal_spacing: float = 2.0
     vertical_spacing: float = 1.0  # For parallel blocks during forks
 
+    #TODO ensure all opacity changes are validated, ensure all spacings are positive, throw a logger warning for "valid but nonsense" things like setting genesis_y to 100
     def __post_init__(self):
         """Validate and auto-correct values with warnings."""
+
+        # Auto-validate Protocol attributes
+        validate_protocol_attributes(self)
+
+        # Auto-validate TypedDict completeness
+        validate_typeddict_completeness()
+
         # Auto-correct opacity values
         if self.fill_opacity <= 0:
             logger.warning("fill_opacity must be > 0, auto-correcting to 0.01")
@@ -211,5 +226,94 @@ class _KaspaConfigInternal(BaseBlockConfig):
             logger.warning("k must be >= 0, auto-correcting to 0")
             self.k = 0
 
-        # Default configuration instance
+
+def _get_dataclass_fields(cls) -> set[str]:
+    """Extract all field names from a dataclass."""
+    return {field.name for field in fields(cls)}
+
+def _get_typeddict_fields(cls) -> set[str]:
+    """Extract all field names from a TypedDict."""
+    return set(cls.__annotations__.keys())
+
+def validate_typeddict_completeness() -> None:
+    """Validate that KaspaConfig TypedDict includes all _KaspaConfigInternal fields."""
+    dataclass_fields = _get_dataclass_fields(_KaspaConfigInternal)
+    typeddict_fields = _get_typeddict_fields(KaspaConfig)
+
+    missing_fields = dataclass_fields - typeddict_fields
+    if missing_fields:
+        raise AttributeError(
+            f"KaspaConfig TypedDict missing {len(missing_fields)} fields from _KaspaConfigInternal: "
+            f"{sorted(missing_fields)}. Add these fields to ensure users can modify all parameters."
+        )
+
+# Default configuration instance
 DEFAULT_KASPA_CONFIG = _KaspaConfigInternal()
+
+
+"""
+################################################################################  
+TODO: Centralize Animation Timing Control  
+========================================  
+  
+PROBLEM: Animation timing is inconsistent across different block creation methods  
+- Instant blocks: 2.0s for vertical centering/shift (creation is instant)  
+- Virtual blocks: 2.0s for full creation animation (block + parent lines)  
+- Multiple blocks: 2.0s for repositioning only  
+  
+SOLUTION: Extend config system with granular timing parameters  
+  
+1. UPDATE CONFIG (blanim/blockDAGs/kaspa/config.py):  
+    @dataclass  
+    class _KaspaConfigInternal(BaseBlockConfig):  
+        # ANIMATION TIMING - Granular control  
+        create_run_time: float = 2.0      # Block creation (single or multiple)  
+        shift_run_time: float = 1.0       # Shift/repositioning animations    
+        centering_run_time: float = 1.0   # Vertical centering after batch creation  
+        camera_follow_time: float = 1.0   # Camera following (existing)  
+  
+2. UPDATE KaspaDAG (blanim/blockDAGs/kaspa/dag.py):  
+    def set_animation_timing(self, create_time=None, shift_time=None, centering_time=None):  
+        Centralized timing control for all animations.  
+        if create_time is not None:  
+            self.config.create_run_time = create_time  
+        if shift_time is not None:  
+            self.config.shift_run_time = shift_time  
+        if centering_time is not None:  
+            self.config.centering_run_time = centering_time  
+        return self  
+  
+    def get_animation_timing(self):  
+        Get current timing settings.  
+        return {  
+            'create': self.config.create_run_time,  
+            'shift': self.config.shift_run_time,  
+            'centering': self.config.centering_run_time  
+        }  
+  
+3. UPDATE METHODS TO USE CONSISTENT TIMING:  
+    - KaspaVisualBlock.create_with_lines(): Use create_run_time  
+    - BlockManager._animate_dag_repositioning(): Use shift_run_time    
+    - create_blocks_from_list_instant_with_vertical_centering(): Use centering_run_time  
+  
+4. USAGE EXAMPLE:  
+    dag = KaspaDAG(scene=self)  
+    dag.set_animation_timing(  
+        create_time=2.0,    # All block creation  
+        shift_time=1.0,     # All shifts/repositioning  
+        centering_time=1.0  # Vertical centering  
+    )  
+  
+BENEFITS:  
+- Centralized control over all animation timing  
+- Consistent behavior regardless of creation method  
+- Easy to adjust timing globally or per-scene  
+- Follows existing config system pattern  
+  
+RELATED FILES:  
+- blanim/blockDAGs/kaspa/config.py:146-150 (current timing config)  
+- blanim/blockDAGs/kaspa/visual_block.py:222-232 (create_with_lines timing)  
+- blanim/blockDAGs/kaspa/dag.py:833-837 (block creation animation)  
+- selfish_mining_bitcoin.py:1293-1368 (AnimationTimingConfig pattern reference)  
+################################################################################ 
+"""
