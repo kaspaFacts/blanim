@@ -15,7 +15,7 @@ from manim import (
     BLACK,
     Create,
     AnimationGroup,
-    VGroup, YELLOW_C, PURE_BLUE, BLUE_E, RED_E, ParsableManimColor, BLUE
+    VGroup, ParsableManimColor, Mobject
 )
 
 class BaseVisualBlock(VGroup):
@@ -40,6 +40,13 @@ class BaseVisualBlock(VGroup):
         self.config = config
         self._label_text = label_text
 
+        # Store creation-time values for true reset
+        self._creation_block_fill_color = config.block_color
+
+        self._creation_block_stroke_color = config.stroke_color
+        self._creation_block_stroke_width = config.stroke_width
+
+
         #####Square#####
         self.square = Square(
             fill_color=config.block_color,
@@ -52,6 +59,7 @@ class BaseVisualBlock(VGroup):
 
         self.square.move_to((position[0], position[1], 0))
 
+        #####BG Square#####
         self.background_rect = Square(
             side_length=config.side_length,
             fill_color=BLACK,
@@ -173,43 +181,6 @@ class BaseVisualBlock(VGroup):
         return pulse_stroke
 
     ####################
-    # Coloring Block Functions
-    ####################
-
-    def set_block_pure_blue(self):
-        """Returns animation to set a block fill to BLUE"""
-        return self.square.animate.set_fill(
-            color=PURE_BLUE,
-            opacity=0.9
-        )
-
-    def set_block_blue(self):
-        """Returns animation to set a block fill to BLUE"""
-        return self.square.animate.set_fill(
-            color=BLUE_E,
-            opacity=0.9
-        )
-
-    def set_block_red(self):
-        """Returns animation to set a block fill to RED"""
-        return self.square.animate.set_fill(
-            color=RED_E,
-            opacity=0.9
-        )
-
-    def set_block_stroke_yellow(self):
-        """Returns animation to set a block stroke to YELLOW"""
-        return self.square.animate.set_stroke(
-            color=YELLOW_C
-        )
-
-    def reset_block_stroke_color(self):
-        """Returns animation to set a block stroke to YELLOW"""
-        return self.square.animate.set_stroke(
-            color=self.stroke_color
-        )
-
-    ####################
     # Override Functions
     ####################
 
@@ -218,6 +189,305 @@ class BaseVisualBlock(VGroup):
         """Override to return only the square's center, ignoring label positioning."""
         return self.square.get_center()
 
+    ########################################
+    # Visual Appearance Methods
+    ########################################
+
+    def set_block_fill_color(self, manim_color:ParsableManimColor) -> Mobject:
+        """
+        Returns an animatable Mobject for block fill color transformation.
+
+        This is the core implementation that creates the animatable mobject
+        using Manim's .animate system. The visual block handles the actual
+        square manipulation while the logical block provides the public API.
+
+        Parameters:
+            manim_color: Any parsable Manim color (RED, BLUE, "#FF0000", (1,0,0), etc.)
+                        Supports predefined colors, hex strings, and RGB tuples.
+                        Colors are applied to the block's fill while preserving
+                        stroke color and other visual properties.
+
+        Returns:
+            Mobject: An animatable Square that changes fill color when passed
+                    to scene.play(). The returned object supports method chaining
+                    with other .animate transformations.
+
+        Examples:
+            # Basic color animation
+            animated = self.square.animate.set_fill(color=RED)
+            self.play(animated)
+
+            # Chain with position change
+            self.play(self.square.animate.set_fill(color=BLUE).shift(UP))
+
+            # Complex transformation chain
+            self.play(
+                self.square.animate
+                    .set_fill(color=GREEN)
+                    .scale(0.8)
+                    .rotate(PI/6)
+                    .shift(RIGHT * 2)
+            )
+
+            # Using different color formats
+            self.play(self.square.animate.set_fill(color="#FF5733"))  # Hex
+            self.play(self.square.animate.set_fill(color=(1, 0, 0)))   # RGB Red
+            self.play(self.square.animate.set_fill(color=(0, 1, 0)))   # RGB Green
+
+        Implementation Details:
+            Uses Manim's native .animate system which returns an animatable
+            version of the mobject. The actual Animation object is created
+            internally when passed to scene.play(). This follows the same
+            pattern as other visual block methods.
+
+        Performance Notes:
+            - Method chaining creates a single optimized animation
+            - Separate play() calls create multiple sequential animations
+            - Chaining is both more efficient and provides smoother visual transitions
+
+            # Efficient: Single combined animation
+            self.play(self.square.animate.set_fill(RED).scale(2))
+
+            # Less efficient: Multiple separate animations
+            self.play(self.square.animate.set_fill(RED))
+            self.play(self.square.animate.scale(2))
+
+        See Also:
+            create_highlight_animation: Create stroke highlight without fill change
+            set_block_stroke_color: Change border color instead of fill
+            reset_block_color: Reset fill to config default
+
+        Notes:
+            - Returns animatable mobject, not Animation object
+            - Preserves stroke color, opacity, and other properties
+            - Only modifies the fill color of the block's square
+            - Follows blanim's animation return pattern for consistency
+            - Config parameters like default colors are defined in consensus-specific configs
+        """
+        return self.square.animate.set_fill(color=manim_color)
+
+    def reset_block_fill_color(self) -> Mobject:
+        """
+        Returns an animatable Mobject to reset fill color to creation-time values.
+
+        This method restores the block's fill color to what it was when initially
+        created, preserving the user's original design intent regardless of any
+        subsequent config modifications or temporary color changes.
+
+        Returns:
+            Mobject: An animatable Square that resets fill color when passed to
+                    scene.play(). The returned object supports method chaining
+                    with other .animate transformations.
+
+        Examples:
+            # Reset fill color after temporary highlighting
+            self.play(block.set_block_fill_color(RED))
+            self.wait(1)
+            self.play(block.reset_block_fill_color())
+
+            # Chain reset with other transformations
+            self.play(block.reset_block_fill_color().scale(1.2))
+
+            # Reset multiple blocks simultaneously
+            self.play(
+                block1.reset_block_fill_color(),
+                block2.reset_block_fill_color(),
+                block3.reset_block_fill_color()
+            )
+
+            # Use in animation sequences
+            self.play(
+                block.set_block_fill_color(YELLOW),
+                block.scale(1.5)
+            )
+            self.play(block.reset_block_fill_color())
+
+        Implementation Details:
+            Uses the creation-time color stored in self._creation_block_fill_color
+            during BaseVisualBlock initialization. This preserves the original
+            appearance even if config values are modified during the scene.
+            The actual Animation object is created internally when passed to
+            scene.play().
+
+        Performance Notes:
+            - Reset operations are single-property animations and are very fast
+            - Can be chained with other animations for combined effects
+            - More efficient than manually tracking and restoring color values
+
+            # Efficient: Combined reset and transform
+            self.play(block.reset_block_fill_color().shift(UP))
+
+            # Less efficient: Separate operations
+            self.play(block.reset_block_fill_color())
+            self.play(block.shift(UP))
+
+        See Also:
+            set_block_fill_color: Change fill color to any specified color
+            reset_block_stroke_color: Reset stroke color to creation values
+            create_highlight_animation: Create stroke highlight without fill change
+
+        Notes:
+            - Returns animatable mobject, not Animation object
+            - Only affects fill color, preserves stroke color and other properties
+            - Uses creation-time values, not current config values
+            - Follows blanim's animation return pattern for consistency
+            - Creation values are stored during BaseVisualBlock initialization
+        """
+        return self.square.animate.set_fill(color=self._creation_block_fill_color)
+
+    def set_block_stroke_color(self, manim_color: ParsableManimColor) -> Mobject:
+        """
+        Returns an animatable Mobject for block stroke color transformation.
+
+        This method creates an animatable mobject that changes the block's border
+        (stroke) color while preserving fill color and other visual properties.
+        The stroke color change is commonly used for highlighting blocks during
+        consensus algorithm visualization.
+
+        Parameters:
+            manim_color: Any parsable Manim color (RED, BLUE, "#FF0000", (1,0,0), etc.)
+                        Supports predefined colors, hex strings, and RGB tuples.
+                        Colors are applied to the block's stroke while preserving
+                        fill color and other visual properties.
+
+        Returns:
+            Mobject: An animatable Square that changes stroke color when passed
+                    to scene.play(). The returned object supports method chaining
+                    with other .animate transformations.
+
+        Examples:
+            # Basic stroke color change
+            self.play(block.set_block_stroke_color(YELLOW))
+
+            # Chain with fill color change
+            self.play(block.set_block_stroke_color(GREEN).set_block_fill_color(BLUE))
+
+            # Chain with position and scale
+            self.play(
+                block.set_block_stroke_color(RED)
+                    .shift(UP)
+                    .scale(1.2)
+            )
+
+            # Using different color formats
+            self.play(block.set_block_stroke_color("#FF5733"))  # Hex
+            self.play(block.set_block_stroke_color((1, 0, 0)))   # RGB Red
+            self.play(block.set_block_stroke_color((0, 1, 0)))   # RGB Green
+
+            # Highlight during consensus evaluation
+            self.play(block.set_block_stroke_color(YELLOW))
+            self.wait(0.5)
+            self.play(block.reset_block_stroke_color())
+
+        Implementation Details:
+            Uses Manim's native .animate system which returns an animatable
+            version of the mobject. The actual Animation object is created
+            internally when passed to scene.play(). This follows the same
+            pattern as other visual block methods and only modifies the
+            stroke property of the square.
+
+        Performance Notes:
+            - Method chaining creates a single optimized animation
+            - Separate play() calls create multiple sequential animations
+            - Stroke changes are typically faster than fill changes
+
+            # Efficient: Single combined animation
+            self.play(block.set_block_stroke_color(YELLOW).scale(1.1))
+
+            # Less efficient: Multiple separate animations
+            self.play(block.set_block_stroke_color(YELLOW))
+            self.play(block.scale(1.1))
+
+        See Also:
+            reset_block_stroke_color: Reset stroke to creation color
+            set_block_fill_color: Change fill color instead of stroke
+            create_highlight_animation: Create comprehensive highlight effect
+
+        Notes:
+            - Returns animatable mobject, not Animation object
+            - Preserves fill color, opacity, and other properties
+            - Only modifies the stroke color of the block's square
+            - Commonly used for block highlighting in consensus visualizations
+            - Follows blanim's animation return pattern for consistency
+        """
+        return self.square.animate.set_stroke(color=manim_color)
+
+    def reset_block_stroke_color(self) -> Mobject:
+        """
+        Returns an animatable Mobject to reset stroke color to creation-time values.
+
+        This method restores the block's stroke (border) color to what it was when
+        initially created, preserving the user's original design intent regardless
+        of any subsequent highlighting or temporary color changes.
+
+        Returns:
+            Mobject: An animatable Square that resets stroke color when passed to
+                    scene.play(). The returned object supports method chaining
+                    with other .animate transformations.
+
+        Examples:
+            # Reset stroke color after highlighting
+            self.play(block.set_block_stroke_color(YELLOW))
+            self.wait(1)
+            self.play(block.reset_block_stroke_color())
+
+            # Chain reset with other transformations
+            self.play(block.reset_block_stroke_color().scale(0.8))
+
+            # Reset multiple blocks after consensus evaluation
+            self.play(
+                evaluated_block.reset_block_stroke_color(),
+                candidate_block.reset_block_stroke_color(),
+                selected_block.reset_block_stroke_color()
+            )
+
+            # Use in animation sequences
+            self.play(
+                block.set_block_stroke_color(RED),
+                block.set_block_fill_color(BLUE)
+            )
+            self.play(block.reset_block_stroke_color())
+
+        Implementation Details:
+            Uses the creation-time color stored in self._creation_block_stroke_color
+            during BaseVisualBlock initialization. This preserves the original
+            appearance even after temporary highlighting during consensus algorithm
+            visualization. The actual Animation object is created internally when
+            passed to scene.play().
+
+        Performance Notes:
+            - Reset operations are single-property animations and are very fast
+            - Can be chained with other animations for combined effects
+            - Essential for clean consensus visualization state management
+
+            # Efficient: Combined reset and transform
+            self.play(block.reset_block_stroke_color().shift(DOWN))
+
+            # Less efficient: Separate operations
+            self.play(block.reset_block_stroke_color())
+            self.play(block.shift(DOWN))
+
+        See Also:
+            set_block_stroke_color: Change stroke color to any specified color
+            reset_block_fill_color: Reset fill color to creation values
+            create_unhighlight_animation: Reset all visual properties
+
+        Notes:
+            - Returns animatable mobject, not Animation object
+            - Only affects stroke color, preserves fill color and other properties
+            - Uses creation-time values, not current config values
+            - Essential for proper consensus visualization cleanup
+            - Follows blanim's animation return pattern for consistency
+        """
+        return self.square.animate.set_stroke(color=self._creation_block_stroke_color)
+
+    def set_block_stroke_width(self, width: float) -> Mobject:
+        """Returns animatable Mobject to set block stroke width."""
+        return self.square.animate.set_stroke(width=width)
+
+    def reset_block_stroke_width(self) -> Mobject:
+        """Returns animatable Mobject to reset stroke width to creation value."""
+        return self.square.animate.set_stroke(width=self._creation_block_stroke_width)
 
 class BlockConfigProtocol(Protocol):
     """

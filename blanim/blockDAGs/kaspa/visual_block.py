@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, Any
 
 import numpy as np
 from manim import AnimationGroup, Create, BackgroundRectangle, ShowPassingFlash, cycle_animation, Animation, \
-    UpdateFromAlphaFunc, RED
+    UpdateFromAlphaFunc, RED, ParsableManimColor, Mobject
 
 from ... import BaseVisualBlock, ParentLine
 
