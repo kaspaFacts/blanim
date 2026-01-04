@@ -6,8 +6,12 @@ __all__ = ["BitcoinLogicalBlock"]
 
 from typing import Optional, List
 
-from .config import DEFAULT_BITCOIN_CONFIG, BitcoinConfig
 from .visual_block import BitcoinVisualBlock
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from . import _BitcoinConfigInternal
 
 class BitcoinLogicalBlock:
     """Bitcoin logical block with proxy pattern delegation."""
@@ -17,8 +21,12 @@ class BitcoinLogicalBlock:
             name: str,
             parent: Optional[BitcoinLogicalBlock] = None,
             position: tuple[float, float] = (0, 0),
-            bitcoin_config: BitcoinConfig = DEFAULT_BITCOIN_CONFIG
+            config: _BitcoinConfigInternal = None
     ):
+        if config is None:
+            raise ValueError("config parameter is required")
+        self.config = config
+
         # Identity
         self.name = name
         self.hash = id(self)
@@ -41,7 +49,7 @@ class BitcoinLogicalBlock:
             label_text=str(self.name),
             position=position,
             parent=parent_visual,
-            bitcoin_config=bitcoin_config  # Type-specific parameter
+            config=config  # Type-specific parameter
         )
         self._visual.logical_block = self  # Bidirectional link
 
@@ -54,5 +62,5 @@ class BitcoinLogicalBlock:
         # Avoid infinite recursion for _visual itself
         if attr == '_visual':
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '_visual'")
-            # Delegate everything else to visual block
+        # Delegate everything else to visual block
         return getattr(self._visual, attr)

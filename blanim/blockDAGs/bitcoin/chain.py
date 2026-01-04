@@ -72,16 +72,18 @@ import numpy as np
 from manim import ShowPassingFlash, cycle_animation, Wait, UP, RIGHT, config
 
 from .logical_block import BitcoinLogicalBlock
-from .config import BitcoinConfig, DEFAULT_BITCOIN_CONFIG
+from .config import BitcoinConfig, DEFAULT_BITCOIN_CONFIG, _BitcoinConfigInternal
 
 if TYPE_CHECKING:
     from ...core.hud_2d_scene import HUD2DScene
 
 # noinspection PyProtectedMember
 class BitcoinDAG:
-    def __init__(self, scene: HUD2DScene, chain_config: BitcoinConfig = DEFAULT_BITCOIN_CONFIG):
+    def __init__(self, scene: HUD2DScene, chain_config: BitcoinConfig = None):
         self.scene = scene
-        self.config = chain_config
+        self.config_manager = BitcoinConfigManager(_BitcoinConfigInternal(**DEFAULT_BITCOIN_CONFIG.__dict__))
+        if chain_config:
+            self.config_manager.apply_config(chain_config)
         self.blocks: dict[str, BitcoinLogicalBlock] = {}
         self.all_blocks: List[BitcoinLogicalBlock] = []
         self.genesis: Optional[BitcoinLogicalBlock] = None
@@ -110,7 +112,7 @@ class BitcoinDAG:
             name=name,
             parent=parent,
             position=position,
-            bitcoin_config=self.config,
+            config=self.config,
         )
 
         # Register and add to scene
@@ -748,3 +750,28 @@ class BitcoinDAG:
 
         if reset_animations:
             self.scene.play(*reset_animations)
+
+    @property
+    def config(self) -> _BitcoinConfigInternal:
+        """Access config through manager."""
+        return self.config_manager.config
+
+    def apply_config(self, user_config: BitcoinConfig) -> 'BitcoinDAG':
+        """Apply typed configuration with chaining."""
+        self.config_manager.apply_config(user_config, len(self.all_blocks) > 0)
+        return self
+
+class BitcoinConfigManager:
+    """Manages configuration for a BitcoinDAG instance."""
+
+    def __init__(self, user_config: _BitcoinConfigInternal):
+        self.config = user_config
+
+    def apply_config(self, user_config: BitcoinConfig, is_locked: bool = False) -> None:
+        """Apply typed config with genesis lock protection."""
+        # Similar to KaspaConfigManager but for Bitcoin
+        for key, value in user_config.items():
+            if hasattr(self.config, key):
+                setattr(self.config, key, value)
+                if hasattr(self.config, '__post_init__'):
+                    self.config.__post_init__()

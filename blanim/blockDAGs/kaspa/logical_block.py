@@ -15,7 +15,7 @@ from typing import Optional, List, Set, Any, Dict
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ... import _KaspaConfigInternal
+    from . import _KaspaConfigInternal
 
 @dataclass
 class GhostDAGData:

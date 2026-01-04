@@ -9,7 +9,7 @@ from typing import Optional, TYPE_CHECKING
 
 from manim import Create, AnimationGroup
 
-from .config import BitcoinConfig, DEFAULT_BITCOIN_CONFIG
+from .config import _BitcoinConfigInternal
 from ... import BaseVisualBlock, ParentLine
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ class BitcoinVisualBlock(BaseVisualBlock):
         via z_index (blocks at z_index=2, parent line at z_index=1).
     parent : BitcoinVisualBlock, optional
         The parent block in the chain. If None, this is a genesis block.
-    bitcoin_config : BitcoinBlockConfig, optional
+    config : BitcoinBlockConfig, optional
         Configuration object containing all visual and animation settings.
         Default is DEFAULT_BITCOIN_CONFIG.
 
@@ -97,7 +97,7 @@ class BitcoinVisualBlock(BaseVisualBlock):
     BaseVisualBlock : Base class for all visual blocks
     BitcoinBlockConfig : Configuration object for Bitcoin blocks
     """
-    bitcoin_config: BitcoinConfig
+    bitcoin_config: _BitcoinConfigInternal
     parent_line: ParentLine | None
     logical_block: BitcoinLogicalBlock
 
@@ -106,10 +106,11 @@ class BitcoinVisualBlock(BaseVisualBlock):
             label_text: str,
             position: tuple[float, float],
             parent: Optional[BitcoinVisualBlock] = None,
-            bitcoin_config: BitcoinConfig = DEFAULT_BITCOIN_CONFIG
+            config: _BitcoinConfigInternal = None  # Changed: parameter name and default
     ) -> None:
-        # Pass config values to BaseVisualBlock
-        super().__init__(label_text, position, bitcoin_config)
+        if config is None:
+            raise ValueError("config parameter is required")  # Added: validation
+        super().__init__(label_text, position, config)
 
 #        self.children = []
 
@@ -119,7 +120,7 @@ class BitcoinVisualBlock(BaseVisualBlock):
             parent_line = ParentLine(
                 self.square,
                 parent.square,
-                line_color=bitcoin_config.line_color
+                line_color=config.line_color
             )
             parent_line.set_z_index(1)
             self.parent_lines.append(parent_line)
