@@ -2,154 +2,9 @@
 
 from blanim import *
 
-####################
-#Some examples NOT using anything but hud_2d_scene
-####################
-
-"""  
-============================================================================  
-PROJECT STATUS: Bitcoin vs Kaspa Block Comparison Animation  
-============================================================================  
-
-CURRENT STATE (as of last session):  
------------------------------------  
-Successfully implemented side-by-side block comparison with modular zoom  
-animations. The scene creates two blocks (Bitcoin left, Kaspa right) with  
-header and body sections, then supports zooming into bodies OR headers  
-independently while keeping both blocks visible simultaneously.  
-
-WHAT'S WORKING:  
----------------  
-1. Block Creation (create_labeled_square, create_block_sections)  
-   - Two labeled squares side by side (Bitcoin/Kaspa)  
-   - Each square contains header and body rectangles with labels  
-   - Proper spacing between header/body sections (section_buff = 0.3)  
-   - All components use white strokes with fill_opacity=0 (transparent)  
-
-2. Animation Timing Fix  
-   - Separate animations for rectangles vs text labels  
-   - Rectangles animate first, then labels (avoids lag_ratio issues)  
-   - Each animation phase has dedicated run_time for consistent pacing  
-
-3. Body Zoom System (zoom_to_bodies, zoom_out_from_bodies)  
-   - Fades non-body elements using fade(0.95) for 5% opacity  
-   - Transforms body rectangles to full block size (not just scaling)  
-   - Creates transactions (tx0-txN) filling body top-to-bottom  
-   - tx0 labeled as "coinbase" in both blocks  
-   - Restores using Transform back to original + separate fade restoration  
-
-4. Header Zoom System (zoom_to_headers, zoom_out_from_headers)  
-   - Same pattern as body zoom but for headers  
-   - Creates header fields (version, merkle root, timestamp, bits, nonce)  
-   - Kaspa-specific fields in YELLOW (parents, accepted_id_merkle_root,   
-     utxo_commitment, daa_score, blue_work, blue_score, pruning_point)  
-   - Common fields in WHITE  
-   - Fields centered vertically within zoomed header rectangles  
-
-5. Opacity Restoration System  
-   - Uses set_stroke(opacity=1.0) for rectangles (stroke-only mobjects)  
-   - Uses set_fill(opacity=1.0) for text labels (fill-based mobjects)  
-   - Critical: Cannot use set_opacity() or fade() for restoration due to  
-     multiplicative behavior and fill_opacity=0 conflict  
-
-CURRENT ARCHITECTURE:  
----------------------  
-VGroup Structure:  
-  bitcoin_square / kaspa_square  
-  ├─ [0] Square (stroke-only, fill_opacity=0)  
-  └─ [1] Text label ("Bitcoin Block" / "Kaspa Block")  
-
-  bitcoin_sections / kaspa_sections (from create_block_sections)  
-  ├─ [0] header_group  
-  │  ├─ [0] header_rect (Rectangle)  
-  │  └─ [1] header_label (Text "Header")  
-  └─ [1] body_group  
-     ├─ [0] body_rect (Rectangle)  
-     └─ [1] body_label (Text "Body")  
-
-Zoom Pattern:  
-1. Store original state (copy() for Transform restoration)  
-2. Fade non-target elements (fade(0.95) = 5% opacity)  
-3. Transform target rectangles to full block size  
-4. Create content (transactions or header fields)  
-5. Wait for viewing  
-6. FadeOut content  
-7. Transform rectangles back (using stored originals)  
-8. Restore opacity (set_stroke for rects, set_fill for text)  
-
-KNOWN ISSUES & SOLUTIONS:  
--------------------------  
-1. Opacity Restoration Problem  
-   - WRONG: fade(0) after fade(0.95) - multiplicative, doesn't restore  
-   - WRONG: set_opacity(1.0) - sets fill_opacity=1.0, makes rects solid white  
-   - RIGHT: set_stroke(opacity=1.0) for rectangles  
-   - RIGHT: set_fill(opacity=1.0) for text labels  
-
-2. Animation Timing Issues  
-   - Create() on VGroup with mixed complexity causes stagger  
-   - Solution: Separate animations for each component type  
-   - Pattern: self.play(Create(rect1), Create(rect2)), then   
-              self.play(Create(label1), Create(label2))  
-
-3. Transform vs Scale  
-   - Scale maintains aspect ratio, doesn't change shape  
-   - Transform allows both size AND shape changes  
-   - Use Transform with target rectangles for zoom effect  
-
-NEXT STEPS:  
------------  
-1. Add zoom_out_from_headers() method (currently missing)  
-2. Test full animation flow: blocks → body zoom → headers zoom → restore  
-3. Consider adding zoom_blocks() for outer square zoom  
-4. Add more granular zoom levels (e.g., zoom into specific transaction)  
-
-FUTURE IMPROVEMENTS:  
---------------------  
-1. Encapsulate Zoom Behavior  
-   - Create ZoomableSection class wrapping VGroup  
-   - Methods: zoom_in(), zoom_out(), add_content(), clear_content()  
-   - Eliminates need for external zoom_to_* methods  
-
-2. Nested Zoom Support  
-   - Allow zooming into zoomed content (e.g., body → specific tx)  
-   - Maintain zoom stack for proper restoration  
-   - Each zoom level tracks its own fade targets  
-
-3. Animation State Machine  
-   - Track current zoom state (OVERVIEW, BODY_ZOOM, HEADER_ZOOM)  
-   - Validate transitions (can't zoom to headers while in body zoom)  
-   - Enable smooth transitions between any two states  
-
-4. Content Templates  
-   - Define field/transaction templates separately  
-   - Easy to swap Bitcoin/Kaspa content  
-   - Support for other blockchain types  
-
-5. Camera Integration Option  
-   - Hybrid approach: mobject transform for dual-block view  
-   - Camera zoom for single-block deep dives  
-   - Best of both worlds  
-
-DEBUGGING TIPS:  
----------------  
-- If fade doesn't work: Check if using fade() vs set_stroke/set_fill  
-- If colors wrong: Check WHITE vs YELLOW in field creation  
-- If spacing off: Verify section_buff and field_spacing values  
-- If animation skips: Add wait() calls and check run_time values  
-- If Transform fails: Ensure original state is stored with copy()  
-
-TECHNICAL NOTES:  
-----------------  
-- HUD2DScene provides fixed narration/caption during animations  
-- All coordinates in Manim units (not pixels)  
-- LEFT/RIGHT/UP/DOWN are unit vectors (magnitude 1)  
-- VGroup indexing: [0] first child, [1] second child, etc.  
-- Text uses fill, Rectangles use stroke (when fill_opacity=0)  
-
-LAST MODIFIED: [Current Date]  
-WORKING ON: Adding Kaspa-specific header fields with color coding  
-============================================================================  
-"""
+    ####################
+    # Some examples NOT using anything but hud_2d_scene
+    ####################
 
 class BlockComparisonScene(HUD2DScene):
     def __init__(self):
@@ -733,9 +588,22 @@ class BlockComparisonScene(HUD2DScene):
 
         self.wait(3)
 
-####################
-#Kaspa Specific Examples
-####################
+    ####################
+    # Kaspa Specific Examples
+    ####################
+
+def test_theme() -> KaspaConfig:
+    """Test theme with various configuration parameters."""
+    return {
+        "block_color": RED,
+        "fill_opacity": 0.7,
+        "stroke_color": BLUE,
+        "stroke_width": 5,
+        "k": 25,
+        "label_font_size": 32,
+        "horizontal_spacing": 2.5,
+        "vertical_spacing": 1.5,
+    }
 
 class FinalityDepth(HUD2DScene):
     """Explainer for Finality Depth."""
@@ -804,7 +672,7 @@ class FinalityDepth(HUD2DScene):
         self.wait(5)
         self.caption("Kaspa uses $432,000$ as its Finality Depth", run_time=1.0)
         self.wait(5)
-        self.caption("The probability of a 49\% adversary successfully creating this fork...", run_time=1.0)
+        self.caption(r"The probability of a 49\% adversary successfully creating this fork...", run_time=1.0)
         self.wait(5)
         self.caption("...is $(49/51)^{432000}$ or $10^{-7522}$", run_time=1.0)
         self.wait(5)
@@ -1119,24 +987,25 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         self.wait(1)
         self.narrate("PHANTOM GHOSTDAG (fig 3)", run_time=caption_time)
 
-        block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_l, block_k, block_j, block_m = dag.create_blocks_from_list_instant_with_vertical_centering([
-            ("Gen", None, "Gen"),
-            ("E", ["Gen"], "E", 2),
-            ("D", ["Gen"], "D", 0),
-            ("C", ["Gen"], "C", 1),
-            ("B", ["Gen"], "B"),
-            ("I", ["E"], "I"),
-            ("H", ["D", "C", "E"], "H"),
-            ("F", ["B", "C"], "F"),
-            ("L", ["I", "D"], "L"),
-            ("K", ["B", "H", "I"], "K"),
-            ("J", ["F", "H"], "J"),
-            ("M", ["K", "F"], "M")
-        ])
+        block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_l, block_k, block_j, block_m = dag.create_blocks_from_list_instant_with_vertical_centering(
+            [
+                ("Gen", None, "Gen"),
+                ("E", ["Gen"], "E", 2),
+                ("D", ["Gen"], "D", 0),
+                ("C", ["Gen"], "C", 1),
+                ("B", ["Gen"], "B"),
+                ("I", ["E"], "I"),
+                ("H", ["D", "C", "E"], "H"),
+                ("F", ["B", "C"], "F"),
+                ("L", ["I", "D"], "L"),
+                ("K", ["B", "H", "I"], "K"),
+                ("J", ["F", "H"], "J"),
+                ("M", ["K", "F"], "M")
+            ])
 
         virtual = dag.add_virtual_to_scene()
 
-        self.caption("GHOSTDAG: Selecting chain with highest blue scores", run_time=caption_time)
+        self.caption("GHOSTDAG: Selecting chain with highest Blue Scores", run_time=caption_time)
         self.wait(animation_wait_time)
 
         ##########
@@ -1144,13 +1013,13 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         ##########
 
         dag.fade_blocks(block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_k)
-        self.caption("Tips M, J, L compete - highest blue score wins", run_time=caption_time)
+        self.caption("Tips M, J, L compete - highest Blue Score wins", run_time=caption_time)
         self.play(block_m.change_label(block_m.ghostdag.blue_score))
         self.play(block_j.change_label(block_j.ghostdag.blue_score))
         self.play(block_l.change_label(block_l.ghostdag.blue_score))
-        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.caption("M selected: highest blue score among tips", run_time=caption_time)
-        self.play(block_m.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
+        self.caption("M selected: highest Blue Score among tips", run_time=caption_time)
+        self.play(block_m.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_m.change_label(block_m.name))
         self.play(block_j.change_label(block_j.name))
@@ -1166,9 +1035,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         dag.unfade_blocks(block_k, block_f)
         self.play(block_k.change_label(block_k.ghostdag.blue_score))
         self.play(block_f.change_label(block_f.ghostdag.blue_score))
-        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_k.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("K selected: highest scoring parent of M", run_time=caption_time)
-        self.play(block_k.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_k.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_k.change_label(block_k.name))
         self.play(block_f.change_label(block_f.name))
@@ -1184,9 +1053,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         self.play(block_h.change_label(block_h.ghostdag.blue_score))
         self.play(block_i.change_label(block_i.ghostdag.blue_score))
         self.play(block_b.change_label(block_b.ghostdag.blue_score))
-        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_h.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("H selected: highest scoring parent of K", run_time=caption_time)
-        self.play(block_h.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_h.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.play(block_h.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_h.change_label(block_h.name))
         self.play(block_i.change_label(block_i.name))
@@ -1203,9 +1072,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         self.play(block_d.change_label(block_d.ghostdag.blue_score))
         self.play(block_c.change_label(block_c.ghostdag.blue_score))
         self.play(block_e.change_label(block_e.ghostdag.blue_score))
-        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_d.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("D selected: breaks C, D, E tie by hash (deterministic)", run_time=caption_time)
-        self.play(block_d.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_d.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_d.change_label(block_d.name))
         self.play(block_c.change_label(block_c.name))
@@ -1220,9 +1089,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         dag.fade_blocks(block_c, block_e)
         dag.unfade_blocks(block_gen)
         self.play(block_gen.change_label(block_gen.ghostdag.blue_score))
-        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_gen.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("Genesis selected: root of the chain", run_time=caption_time)
-        self.play(block_gen.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_gen.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_gen.change_label(block_gen.name))
         self.wait(animation_wait_time)
@@ -1237,7 +1106,7 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
         dag.fade_blocks(block_h, block_k, block_m, virtual)
         self.caption("Visit D: add Genesis (only block in past)", run_time=caption_time)
-        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_gen.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.narrate(r"Blue Set \{Gen\}", run_time=caption_time)
         self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
@@ -1245,9 +1114,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
         dag.unfade_blocks(block_h, block_c, block_e)
         self.caption("Visit H: add C, D, E (all fit k=3 limit)", run_time=caption_time)
-        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.play(block_c.set_block_blue(), run_time=animation_coloring_time)
-        self.play(block_e.set_block_blue(), run_time=animation_coloring_time)
+        self.play(block_d.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
+        self.play(block_c.set_block_fill_color(BLUE_E), run_time=animation_coloring_time)
+        self.play(block_e.set_block_fill_color(BLUE_E), run_time=animation_coloring_time)
         self.narrate(r"Blue Set \{Gen, D, C, E\}", run_time=caption_time)
         self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
@@ -1255,9 +1124,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
         dag.unfade_blocks(block_k, block_b, block_i)
         self.caption("Visit K: add H, I (B excluded - 4 blues in anticone)", run_time=caption_time)
-        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.play(block_b.set_block_red(), run_time=animation_coloring_time)
-        self.play(block_i.set_block_blue(), run_time=animation_coloring_time)
+        self.play(block_k.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
+        self.play(block_b.set_block_fill_color(RED_E), run_time=animation_coloring_time)
+        self.play(block_i.set_block_fill_color(BLUE_E), run_time=animation_coloring_time)
         self.narrate(r"Blue Set \{Gen, D, C, E, H, I\}", run_time=caption_time)
         self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
@@ -1265,8 +1134,8 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
         dag.unfade_blocks(block_m, block_f)
         self.caption("Visit M: add K (F excluded - large blue anticone)", run_time=caption_time)
-        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.play(block_f.set_block_red(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
+        self.play(block_f.set_block_fill_color(RED_E), run_time=animation_coloring_time)
         self.narrate(r"Blue Set \{Gen, D, C, E, H, I, K\}", run_time=caption_time)
         self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
@@ -1274,9 +1143,9 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
         dag.unfade_blocks(virtual, block_j, block_l)
         self.caption("Visit V: add M (L, J excluded - would violate k-cluster)", run_time=caption_time)
-        self.play(virtual.set_block_stroke_yellow(), run_time=animation_coloring_time)
-        self.play(block_l.set_block_red(), run_time=animation_coloring_time)
-        self.play(block_j.set_block_red(), run_time=animation_coloring_time)
+        self.play(virtual.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
+        self.play(block_l.set_block_fill_color(RED_E), run_time=animation_coloring_time)
+        self.play(block_j.set_block_fill_color(RED_E), run_time=animation_coloring_time)
         self.narrate(r"Blue Set \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
         self.play(virtual.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
@@ -1284,7 +1153,7 @@ class GHOSTDAGFig3Concise(HUD2DScene):
         self.wait(3.0)
 
 class GHOSTDAGFig3kExplained(HUD2DScene):
-    """GHOSTDAG Fig 3 from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21', animated, k explained version"""
+    """GHOSTDAG Fig 3 from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21', animated k explained version"""
 
     def construct(self):
         dag = KaspaDAG(scene=self)
@@ -1325,9 +1194,9 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_m.change_label(block_m.ghostdag.blue_score))
         self.play(block_j.change_label(block_j.ghostdag.blue_score))
         self.play(block_l.change_label(block_l.ghostdag.blue_score))
-        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("M selected: highest Blue Score among Tips", run_time=caption_time)
-        self.play(block_m.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
         self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_m.change_label(block_m.name))
@@ -1343,9 +1212,9 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.unfade_blocks(block_k, block_f)
         self.play(block_k.change_label(block_k.ghostdag.blue_score))
         self.play(block_f.change_label(block_f.ghostdag.blue_score))
-        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_k.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("K selected: highest Blue Score Parent of M", run_time=caption_time)
-        self.play(block_k.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_k.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
         self.play(block_k.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_k.change_label(block_k.name))
@@ -1361,9 +1230,9 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_h.change_label(block_h.ghostdag.blue_score))
         self.play(block_i.change_label(block_i.ghostdag.blue_score))
         self.play(block_b.change_label(block_b.ghostdag.blue_score))
-        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_h.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("H selected: highest Blue Score Parent of K", run_time=caption_time)
-        self.play(block_h.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_h.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
         self.play(block_h.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_h.change_label(block_h.name))
@@ -1380,9 +1249,9 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_d.change_label(block_d.ghostdag.blue_score))
         self.play(block_c.change_label(block_c.ghostdag.blue_score))
         self.play(block_e.change_label(block_e.ghostdag.blue_score))
-        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_d.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("D selected: breaks C, D, E tie by hash (deterministic)", run_time=caption_time)
-        self.play(block_d.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_d.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
         self.play(block_d.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_d.change_label(block_d.name))
@@ -1397,9 +1266,9 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.fade_blocks(block_c, block_e)
         dag.unfade_blocks(block_gen)
         self.play(block_gen.change_label(block_gen.ghostdag.blue_score))
-        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_gen.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("Genesis selected: root of the chain", run_time=caption_time)
-        self.play(block_gen.set_block_pure_blue(), run_time=animation_coloring_time)
+        self.play(block_gen.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
         self.play(block_gen.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.play(block_gen.change_label(block_gen.name))
@@ -1417,7 +1286,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.fade_blocks(block_h, block_k, block_m, virtual)
 
         self.caption("Visit D: add Genesis: Selected Parent Blue by default", run_time=caption_time)
-        self.play(block_gen.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_gen.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1428,7 +1297,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.unfade_blocks(block_h, block_c, block_e)
 
         self.caption("Visit H: add D: Selected Parent Blue by default", run_time=caption_time)
-        self.play(block_d.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_d.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1437,7 +1306,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
 
         # Check block_c
         self.caption("Blue Candidate C: first in Mergeset, first checked", run_time=caption_time)
-        self.play(block_c.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_c.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate C: has 1 Blue in Anticone", run_time=caption_time)
@@ -1457,7 +1326,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate C: becomes Blue", run_time=caption_time)
-        self.play(block_c.set_block_blue(), run_time=animation_coloring_time)
+        self.play(block_c.set_block_fill_color(BLUE_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1466,7 +1335,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
 
         # Check block_e
         self.caption("Blue Candidate E: next in Mergeset, next checked", run_time=caption_time)
-        self.play(block_e.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_e.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate E: has 2 Blue in Anticone", run_time=caption_time)
@@ -1500,7 +1369,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate E: becomes Blue", run_time=caption_time)
-        self.play(block_e.set_block_blue(), run_time=animation_coloring_time)
+        self.play(block_e.set_block_fill_color(BLUE_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1511,7 +1380,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.unfade_blocks(block_k, block_b, block_i)
 
         self.caption("Visit K: add H: Selected Parent Blue by default", run_time=caption_time)
-        self.play(block_h.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_h.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1520,7 +1389,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
 
         # Check block_b
         self.caption("Blue Candidate B: first in Mergeset, first checked", run_time=caption_time)
-        self.play(block_b.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_b.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate B: has 4 Blues in Anticone", run_time=caption_time)
@@ -1530,7 +1399,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_h.change_label("4"), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
-        self.caption(r"Blue Candidate B: 4 > k :Failed first check", run_time=caption_time)
+        self.caption(r"Blue Candidate B: 4 $>$ k :Failed first check", run_time=caption_time)
         self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
         self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
         self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
@@ -1538,7 +1407,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate B: becomes Red", run_time=caption_time)
-        self.play(block_b.set_block_red(), run_time=animation_coloring_time)
+        self.play(block_b.set_block_fill_color(RED_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1547,7 +1416,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
 
         # Check block_i
         self.caption("Blue Candidate I: next in Mergeset, next checked", run_time=caption_time)
-        self.play(block_i.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_i.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate I: has 3 Blues in Anticone", run_time=caption_time)
@@ -1577,7 +1446,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.caption("Blue Candidate I: if I is Blue, C has 3 Anticone Blues", run_time=caption_time)
         self.play(block_d.change_label("1"), run_time=animation_coloring_time)
         self.play(block_e.change_label("2"), run_time=animation_coloring_time)
-        self.play(block_i.change_label("2"), run_time=animation_coloring_time)
+        self.play(block_i.change_label("3"), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption(r"Blue Candidate I: 3 $\leq$ k :Passed this second check", run_time=caption_time)
@@ -1595,7 +1464,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate I: becomes Blue", run_time=caption_time)
-        self.play(block_i.set_block_blue(), run_time=animation_coloring_time)
+        self.play(block_i.set_block_fill_color(BLUE_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set \{Gen, D, C, E, H, I\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1606,7 +1475,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.unfade_blocks(block_m, block_f)
 
         self.caption("Visit M: add K: Selected Parent Blue by default", run_time=caption_time)
-        self.play(block_k.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_k.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1615,7 +1484,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
 
         # Check block_f
         self.caption("Blue Candidate F: first in Mergeset, first checked", run_time=caption_time)
-        self.play(block_f.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_f.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate F: has 5 Blues in Anticone", run_time=caption_time)
@@ -1626,7 +1495,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_k.change_label("5"), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
-        self.caption(r"Blue Candidate F: 5 > k :Failed first check", run_time=caption_time)
+        self.caption(r"Blue Candidate F: 5 $>$ k :Failed first check", run_time=caption_time)
         self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
         self.play(block_e.change_label(block_e.name), run_time=animation_coloring_time)
         self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
@@ -1635,7 +1504,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate F: becomes Red", run_time=caption_time)
-        self.play(block_f.set_block_red(), run_time=animation_coloring_time)
+        self.play(block_f.set_block_fill_color(RED_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1646,7 +1515,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         dag.unfade_blocks(virtual, block_j, block_l)
 
         self.caption("Visit V: add M: Selected Parent Blue by default", run_time=caption_time)
-        self.play(block_m.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_m.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
         self.wait(animation_wait_time)
@@ -1655,7 +1524,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
 
         # Check block_l
         self.caption("Blue Candidate L: first in Mergeset, first checked", run_time=caption_time)
-        self.play(block_l.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_l.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate L: has 4 Blues in Anticone", run_time=caption_time)
@@ -1665,7 +1534,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_m.change_label("4"), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
-        self.caption(r"Blue Candidate L: 4 > k :Failed first check", run_time=caption_time)
+        self.caption(r"Blue Candidate L: 4 $>$ k :Failed first check", run_time=caption_time)
         self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
         self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
         self.play(block_k.change_label(block_k.name), run_time=animation_coloring_time)
@@ -1673,16 +1542,16 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate L: becomes Red", run_time=caption_time)
-        self.play(block_l.set_block_red(), run_time=animation_coloring_time)
+        self.play(block_l.set_block_fill_color(RED_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
         self.wait(animation_wait_time)
-        self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_l.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.clear_caption()
 
         # Check block_j
         self.caption("Blue Candidate J: next in Mergeset, next checked", run_time=caption_time)
-        self.play(block_j.set_block_stroke_yellow(), run_time=animation_coloring_time)
+        self.play(block_j.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate J: has 3 Blues in Anticone", run_time=caption_time)
@@ -1704,7 +1573,7 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.play(block_j.change_label("4"), run_time=animation_coloring_time)
         self.wait(animation_wait_time)
 
-        self.caption(r"Blue Candidate J: 4 > k :Failed this second check", run_time=caption_time)
+        self.caption(r"Blue Candidate J: 4 $>$ k :Failed this second check", run_time=caption_time)
         self.play(block_d.change_label(block_d.name), run_time=animation_coloring_time)
         self.play(block_c.change_label(block_c.name), run_time=animation_coloring_time)
         self.play(block_h.change_label(block_h.name), run_time=animation_coloring_time)
@@ -1712,11 +1581,11 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.wait(animation_wait_time)
 
         self.caption("Blue Candidate J: becomes Red", run_time=caption_time)
-        self.play(block_j.set_block_red(), run_time=animation_coloring_time)
+        self.play(block_j.set_block_fill_color(RED_E), run_time=animation_coloring_time)
 
         self.narrate(r"Blue Set k=3 \{Gen, D, C, E, H, I, K, M\}", run_time=caption_time)
         self.wait(animation_wait_time)
-        self.play(virtual.reset_block_stroke_color(), run_time=animation_coloring_time)
+        self.play(block_j.reset_block_stroke_color(), run_time=animation_coloring_time)
         self.clear_caption()
 
         self.wait(3.0)

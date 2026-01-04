@@ -1,7 +1,7 @@
 # blanim\blanim\blockDAGs\bitcoin\__init__.py
 from .logical_block import BitcoinLogicalBlock
 from .visual_block import BitcoinVisualBlock
-from .config import BitcoinConfig, DEFAULT_BITCOIN_CONFIG
+from .config import BitcoinConfig, DEFAULT_BITCOIN_CONFIG, _BitcoinConfigInternal
 from .chain import BitcoinDAG
 
 __all__ = [
@@ -9,5 +9,6 @@ __all__ = [
     "BitcoinConfig",
     "DEFAULT_BITCOIN_CONFIG",
     "BitcoinLogicalBlock",
-    "BitcoinDAG"
+    "BitcoinDAG",
+    "_BitcoinConfigInternal"
 ]
