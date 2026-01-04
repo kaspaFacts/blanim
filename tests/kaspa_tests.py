@@ -2,6 +2,9 @@
 
 from blanim import *
 
+####################
+# NOTE : Use blanim --fps 15 -r 426,240 --disable_caching settings for ultra fast, low quality videos when creating scenes
+####################
 
 # user created theme to change parameters of the dag, visual appearance, ect with typehinting
 def test_theme() -> KaspaConfig:
@@ -495,12 +498,12 @@ class TestPastCone(HUD2DScene):
         self.wait(1)
 
         # Test past cone of merge
-        past = dag.get_past_cone(merge)
+        past = merge.get_past_cone()
         assert set(past) == {genesis, b1, b2}, f"Past cone incorrect: {[b.name for b in past]}"
 
-        # Test with string name
-        past_str = dag.get_past_cone("B2")
-        assert merge in past_str or len(past_str) > 0, "String lookup should work"
+#        # Test with string name #removed ability to return by name
+#        past_str = dag.get_past_cone("B2")
+#        assert merge in past_str or len(past_str) > 0, "String lookup should work"
 
         text = Text("Past Cone Test Passed", color=GREEN).to_edge(UP)
         self.play(Write(text))
@@ -522,11 +525,11 @@ class TestFutureCone(HUD2DScene):
         self.wait(1)
 
         # Test future cone of genesis
-        future = dag.get_future_cone(genesis)
+        future = genesis.get_future_cone()
         assert set(future) == {b1, b2, merge, b3}, f"Future cone incorrect: {[b.name for b in future]}"
 
         # Test future cone of b1
-        future_b1 = dag.get_future_cone(b1)
+        future_b1 = b1.get_future_cone()
         assert merge in future_b1 and b3 in future_b1, "b1 future should include merge and b3"
 
         text = Text("Future Cone Test Passed", color=GREEN).to_edge(UP)
@@ -583,10 +586,10 @@ class TestAnticone(HUD2DScene):
         self.wait(1)
 
         # b3 and b4 are in each other's anticone
-        anticone_b3 = dag.get_anticone(b3)
+        anticone_b3 = b3.get_anticone()
         assert b4 in anticone_b3, "b4 should be in b3's anticone"
 
-        anticone_b4 = dag.get_anticone(b4)
+        anticone_b4 = b4.get_anticone()
         assert b3 in anticone_b4, "b3 should be in b4's anticone"
 
         # Genesis should not be in anticone
@@ -642,7 +645,7 @@ class TestComplexDAGStructure(HUD2DScene):
 
         # Verify structure
         assert len(final.parents) == 2
-        assert len(dag.get_past_cone(final)) == 6  # All previous blocks
+        assert len(final.get_past_cone()) == 6  # All previous blocks
 
         text = Text("Complex DAG Test Passed", color=GREEN).to_edge(UP)
         self.play(Write(text))

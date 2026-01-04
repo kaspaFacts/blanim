@@ -201,22 +201,6 @@ class KaspaDAG:
         self.movement.shift_camera_to_follow_blocks()
 
     ########################################
-    # Get Past/Future/Anticone Blocks #Complete
-    ########################################
-
-    def get_past_cone(self, block: KaspaLogicalBlock | str) -> List[KaspaLogicalBlock]:
-        """Get all ancestors of a block."""
-        return self.retrieval.get_past_cone(block)
-
-    def get_future_cone(self, block: KaspaLogicalBlock | str) -> List[KaspaLogicalBlock]:
-        """Get all descendants of a block."""
-        return self.retrieval.get_future_cone(block)
-
-    def get_anticone(self, block: KaspaLogicalBlock | str) -> List[KaspaLogicalBlock]:
-        """Get all anticone of a block."""
-        return self.retrieval.get_anticone(block)
-
-    ########################################
     # Block Handling #Complete
     ########################################
 
@@ -310,7 +294,7 @@ class KaspaDAG:
             target_block = focused_block
 
         # Get the past cone (blocks to keep visible)
-        past_blocks = set(self.get_past_cone(target_block))
+        past_blocks = set(target_block.get_past_cone())
         past_blocks.add(target_block)  # Include the focused block itself
 
         # Find blocks to fade (everything not in past cone)
@@ -422,7 +406,7 @@ class KaspaDAG:
 
                 # Create block directly without workflow/animation
             block_name = self._generate_block_name(parents)
-            position = self.block_manager._calculate_dag_position(parents)
+            position = self.block_manager.calculate_dag_position(parents)
 
             block = KaspaLogicalBlock(
                 name=block_name,
@@ -837,7 +821,7 @@ class KaspaDAG:
                         parents.append(block_map[parent_name])
 
                         # Create block directly without workflow/animation
-            position = self.block_manager._calculate_dag_position(parents)
+            position = self.block_manager.calculate_dag_position(parents)
 
             block = KaspaLogicalBlock(
                 name=block_name,
@@ -901,7 +885,7 @@ class KaspaDAG:
                         raise ValueError(f"Parent block '{parent_name}' not found")
 
             # Create block directly without workflow/animation
-            position = self.block_manager._calculate_dag_position(parents)
+            position = self.block_manager.calculate_dag_position(parents)
 
             block = KaspaLogicalBlock(
                 name=block_name,
@@ -932,7 +916,7 @@ class KaspaDAG:
             x_pos = block.visual_block.square.get_center()[0]
             x_positions.add(x_pos)
 
-        self.block_manager._animate_dag_repositioning(x_positions)
+        self.block_manager.animate_dag_repositioning(x_positions)
 
         return created_blocks
 
@@ -973,7 +957,7 @@ class KaspaDAG:
                         parents.append(block_map[parent_name])
 
             # Create block directly without workflow/animation
-            position = self.block_manager._calculate_dag_position(parents)
+            position = self.block_manager.calculate_dag_position(parents)
 
             block = KaspaLogicalBlock(
                 name=block_name,
@@ -1039,7 +1023,7 @@ class KaspaDAG:
                         parents.append(block_map[parent_name])
 
                         # Create block directly without workflow/animation
-            position = self.block_manager._calculate_dag_position(parents)
+            position = self.block_manager.calculate_dag_position(parents)
 
             block = KaspaLogicalBlock(
                 name=block_name,
@@ -1418,13 +1402,13 @@ class BlockManager:
             # Resolve parent placeholders to actual blocks
             resolved_parents = []
             if parents:
-                for p in parents:
-                    if isinstance(p, BlockPlaceholder):
-                        if p.actual_block is None:
+                for parent in parents:
+                    if isinstance(parent, BlockPlaceholder):
+                        if parent.actual_block is None:
                             raise ValueError(f"Parent block hasn't been created yet")
-                        resolved_parents.append(p.actual_block)
+                        resolved_parents.append(parent.actual_block)
                     else:
-                        resolved_parents.append(p)
+                        resolved_parents.append(parent)
 
             # Calculate x-position based on parents
             block_name = name if name else self.dag.retrieval.generate_block_name(resolved_parents)
@@ -1564,7 +1548,7 @@ class BlockManager:
         while self.dag.workflow_steps:
             self.next_step()
 
-    def _calculate_dag_position(self, parents: Optional[List[KaspaLogicalBlock]]) -> tuple[float, float]:
+    def calculate_dag_position(self, parents: Optional[List[KaspaLogicalBlock]]) -> tuple[float, float]:
         """Calculate position based on rightmost parent and topmost neighbor."""
         if not parents:
             return self.dag.config.genesis_x, self.dag.config.genesis_y
@@ -1590,7 +1574,7 @@ class BlockManager:
 
         return x_position, y_position
 
-    def _animate_dag_repositioning(self, x_positions: Set[float]):
+    def animate_dag_repositioning(self, x_positions: Set[float]):
         """Center columns of blocks around genesis y-position."""
         if not x_positions:
             return
@@ -1936,63 +1920,6 @@ class BlockRetrieval:
 
         return self.dag.all_blocks[-1]
 
-    def get_past_cone(self, block: KaspaLogicalBlock | str) -> List[KaspaLogicalBlock]:
-        """Get all ancestors via depth-first search.
-
-        Args:
-            block: Either a KaspaLogicalBlock instance or a block name string.
-                   If a string is provided, fuzzy matching will be used.
-
-        Returns:
-            List of ancestor blocks.
-        """
-        if isinstance(block, str):
-            block = self.get_block(block)
-            if block is None:
-                return []
-
-        return block.get_past_cone()
-
-    def get_future_cone(self, block: KaspaLogicalBlock | str) -> List[KaspaLogicalBlock]:
-        """Get all descendants via depth-first search.
-
-        Args:
-            block: Either a KaspaLogicalBlock instance or a block name string.
-                   If a string is provided, fuzzy matching will be used.
-
-        Returns:
-            List of descendant blocks.
-        """
-        if isinstance(block, str):
-            block = self.get_block(block)
-            if block is None:
-                return []
-
-        return block.get_future_cone()
-
-    def get_anticone(self, block: KaspaLogicalBlock | str) -> List[KaspaLogicalBlock]:
-        """Get blocks that are neither ancestors nor descendants.
-
-        Args:
-            block: Either a KaspaLogicalBlock instance or a block name string.
-                   If a string is provided, fuzzy matching will be used.
-
-        Returns:
-            List of blocks in the anticone.
-        """
-        if isinstance(block, str):
-            block = self.get_block(block)
-            if block is None:
-                return []
-
-        past = set(block.get_past_cone())
-        future = set(block.get_future_cone())
-
-        return [
-            b for b in self.dag.all_blocks
-            if b != block and b not in past and b not in future
-        ]
-
     def get_current_tips(self) -> List[KaspaLogicalBlock]:
         """Get current DAG tips (blocks without children)."""
         # If no blocks exist, create genesis and return it
@@ -2057,7 +1984,7 @@ class RelationshipHighlighter:
         """Highlight a block's past cone with child-to-parent line animations."""
         self.reset_highlighting()
 
-        context_blocks = self.dag.get_past_cone(focused_block)
+        context_blocks = focused_block.get_past_cone()
         self.flash_lines = self._highlight_with_context(
             focused_block, context_blocks, relationship_type="past"
         )
@@ -2066,7 +1993,7 @@ class RelationshipHighlighter:
         """Highlight a block's future cone with child-to-parent line animations."""
         self.reset_highlighting()
 
-        context_blocks = self.dag.get_future_cone(focused_block)
+        context_blocks = focused_block.get_future_cone()
         self.flash_lines = self._highlight_with_context(
             focused_block, context_blocks, relationship_type="future"
         )
@@ -2075,7 +2002,7 @@ class RelationshipHighlighter:
         """Highlight a block's anticone with child-to-parent line animations."""
         self.reset_highlighting()
 
-        context_blocks = self.dag.get_anticone(focused_block)
+        context_blocks = focused_block.get_anticone()
         self.flash_lines = self._highlight_with_context(
             focused_block, context_blocks, relationship_type="anticone"
         )
@@ -2506,8 +2433,6 @@ class GhostDAGHighlighter:
     def _ghostdag_show_blue_process(self, context_block: KaspaLogicalBlock):
         """Animate blue evaluation with blue anticone visualization."""
         blue_candidates = context_block.get_sorted_mergeset_without_sp()
-        total_view = set(context_block.get_past_cone())
-        total_view.add(context_block)
 
         # Start with selected parent's local POV as baseline
         local_blue_status = context_block.selected_parent.ghostdag.local_blue_pov.copy()
@@ -2528,7 +2453,7 @@ class GhostDAGHighlighter:
             blue_blocks = {block for block, is_blue in local_blue_status.items() if is_blue}
 
             # FIRST CHECK: Highlight blue blocks in candidate's anticone
-            candidate_anticone = context_block.get_anticone(candidate, total_view)
+            candidate_anticone = set(candidate.get_anticone_in_past(context_block))
             blue_in_anticone = candidate_anticone & blue_blocks
 
             # Highlight first check
@@ -2557,7 +2482,7 @@ class GhostDAGHighlighter:
             # SECOND CHECK: For each blue block, check if candidate would exceed k in its anticone
             second_check_failed = False
             for blue_block in blue_blocks:
-                blue_anticone = context_block.get_anticone(blue_block, total_view)
+                blue_anticone = set(blue_block.get_anticone_in_past(context_block))
                 if candidate in blue_anticone:
                     # Highlight the blue block being checked
                     self.dag.scene.play(
@@ -2641,8 +2566,8 @@ class GhostDAGHighlighter:
                         break  # No need to check further blue blocks
 
             # Final decision based on both checks
-            can_be_blue = context_block._can_be_blue_local(
-                candidate, local_blue_status, context_block.kaspa_config.k, total_view
+            can_be_blue = context_block.can_be_blue_local(
+                candidate, local_blue_status, context_block.kaspa_config.k
             )
 
             if can_be_blue:

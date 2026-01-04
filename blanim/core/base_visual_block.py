@@ -146,7 +146,6 @@ class BaseVisualBlock(VGroup):
 
         return AnimationGroup(*anims)
 
-#TODO finish refactoring to eliminate base_config
     def create_highlight_animation(self, color=None, stroke_width=None):
         """Returns animation for highlighting this block's stroke."""
         if color is None:
@@ -482,11 +481,157 @@ class BaseVisualBlock(VGroup):
         return self.square.animate.set_stroke(color=self._creation_block_stroke_color)
 
     def set_block_stroke_width(self, width: float) -> Mobject:
-        """Returns animatable Mobject to set block stroke width."""
+        """
+        Returns an animatable Mobject for block stroke width transformation.
+
+        This method creates an animatable mobject that changes the block's border
+        (stroke) width while preserving fill color and other visual properties.
+        Stroke width adjustments are commonly used for emphasis during consensus
+        algorithm visualization and block highlighting.
+
+        Parameters:
+            width: float
+                  The stroke width to apply to the block's border.
+                  Typical values range from 1 (thin) to 10 (very thick).
+                  The width is applied while preserving stroke color and other
+                  visual properties.
+
+        Returns:
+            Mobject: An animatable Square that changes stroke width when passed
+                    to scene.play(). The returned object supports method chaining
+                    with other .animate transformations.
+
+        Examples:
+            # Basic stroke width change
+            self.play(block.set_block_stroke_width(6))
+
+            # Chain with color change
+            self.play(block.set_block_stroke_width(8).set_block_stroke_color(YELLOW))
+
+            # Chain with position and scale
+            self.play(
+                block.set_block_stroke_width(10)
+                    .shift(UP)
+                    .scale(1.2)
+            )
+
+            # Emphasize block during evaluation
+            self.play(block.set_block_stroke_width(12))
+            self.wait(0.5)
+            self.play(block.reset_block_stroke_width())
+
+            # Multiple blocks with different widths
+            self.play(
+                block1.set_block_stroke_width(4),
+                block2.set_block_stroke_width(6),
+                block3.set_block_stroke_width(8)
+            )
+
+        Implementation Details:
+            Uses Manim's native .animate system which returns an animatable
+            version of the mobject. The actual Animation object is created
+            internally when passed to scene.play(). This follows the same
+            pattern as other visual block methods and only modifies the
+            stroke width property of the square.
+
+        Performance Notes:
+            - Method chaining creates a single optimized animation
+            - Separate play() calls create multiple sequential animations
+            - Stroke width changes are very fast and efficient
+
+            # Efficient: Single combined animation
+            self.play(block.set_block_stroke_width(8).shift(RIGHT))
+
+            # Less efficient: Multiple separate animations
+            self.play(block.set_block_stroke_width(8))
+            self.play(block.shift(RIGHT))
+
+        See Also:
+            reset_block_stroke_width: Reset stroke width to creation value
+            set_block_stroke_color: Change stroke color instead of width
+            create_highlight_animation: Create comprehensive highlight with width change
+
+        Notes:
+            - Returns animatable mobject, not Animation object
+            - Preserves fill color, stroke color, and other properties
+            - Only modifies the stroke width of the block's square
+            - Commonly used for emphasis in consensus visualizations
+            - Follows blanim's animation return pattern for consistency
+        """
         return self.square.animate.set_stroke(width=width)
 
     def reset_block_stroke_width(self) -> Mobject:
-        """Returns animatable Mobject to reset stroke width to creation value."""
+        """
+        Returns an animatable Mobject to reset stroke width to creation-time values.
+
+        This method restores the block's stroke (border) width to what it was when
+        initially created, preserving the user's original design intent regardless
+        of any subsequent emphasis or temporary width changes during visualization.
+
+        Returns:
+            Mobject: An animatable Square that resets stroke width when passed to
+                    scene.play(). The returned object supports method chaining
+                    with other .animate transformations.
+
+        Examples:
+            # Reset stroke width after emphasis
+            self.play(block.set_block_stroke_width(12))
+            self.wait(1)
+            self.play(block.reset_block_stroke_width())
+
+            # Chain reset with other transformations
+            self.play(block.reset_block_stroke_width().scale(0.8))
+
+            # Reset multiple blocks after consensus evaluation
+            self.play(
+                evaluated_block.reset_block_stroke_width(),
+                candidate_block.reset_block_stroke_width(),
+                selected_block.reset_block_stroke_width()
+            )
+
+            # Use in animation sequences
+            self.play(
+                block.set_block_stroke_width(10),
+                block.set_block_stroke_color(RED)
+            )
+            self.play(block.reset_block_stroke_width())
+
+            # Reset while maintaining other changes
+            self.play(block.reset_block_stroke_width().set_block_fill_color(BLUE))
+
+        Implementation Details:
+            Uses the creation-time width stored in self._creation_block_stroke_width
+            during BaseVisualBlock initialization. This preserves the original
+            appearance even after temporary emphasis during consensus algorithm
+            visualization. The actual Animation object is created internally when
+            passed to scene.play().
+
+        Performance Notes:
+            - Reset operations are single-property animations and are very fast
+            - Can be chained with other animations for combined effects
+            - Essential for clean consensus visualization state management
+
+            # Efficient: Combined reset and transform
+            self.play(block.reset_block_stroke_width().shift(DOWN))
+
+            # Less efficient: Separate operations
+            self.play(block.reset_block_stroke_width())
+            self.play(block.shift(DOWN))
+
+        See Also:
+            set_block_stroke_width: Change stroke width to any specified value
+            reset_block_stroke_color: Reset stroke color to creation values
+            reset_block_fill_color: Reset fill color to creation values
+            create_unhighlight_animation: Reset all visual properties
+
+        Notes:
+            - Returns animatable mobject, not Animation object
+            - Only affects stroke width, preserves stroke color, fill color and other properties
+            - Uses creation-time values, not current config values
+            - Essential for proper consensus visualization cleanup
+            - Follows blanim's animation return pattern for consistency
+            - Creation values are stored during BaseVisualBlock initialization
+        """
         return self.square.animate.set_stroke(width=self._creation_block_stroke_width)
 
 class BlockConfigProtocol(Protocol):
