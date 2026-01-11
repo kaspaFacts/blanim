@@ -505,7 +505,6 @@ class KaspaDAG:
             start_block: Block to start from (defaults to sink block)
             scroll_speed_factor: Multiplier for scroll speed based on horizontal spacing
         """
-
         # Get starting block (sink if not specified)
         if start_block is None:
             start_block = self.find_sink()
@@ -635,7 +634,7 @@ class KaspaDAG:
             fade_animations = []
 
             for block in self.all_blocks:
-                block_pos = block.get_center()
+                block_pos = block.visual_block.get_center()
                 # Fade if block is right of threshold AND not in parent chain
                 if block_pos[0] > fade_threshold_x and block not in parent_chain_set:
                     fade_animations.extend(block.visual_block.create_fade_animation())
@@ -1184,15 +1183,15 @@ class KaspaDAG:
         all_animations = []
         for block in resolved_blocks:
             # Add block fade animations
-            all_animations.extend(block.create_fade_animation())
+            all_animations.extend(block.visual_block.create_fade_animation())
 
             # Add parent line fade animations
-            all_animations.extend(block.create_parent_line_fade_animations())
+            all_animations.extend(block.visual_block.create_parent_line_fade_animations())
 
             # Add child line fade animations
             for logical_child in block.children:
-                for line in logical_child.parent_lines:
-                    if line.parent_block == block.square:
+                for line in logical_child.visual_block.parent_lines:
+                    if line.parent_block == block.visual_block.square:
                         all_animations.append(
                             line.animate.set_stroke(opacity=self.config.fade_opacity)
                         )
@@ -1387,6 +1386,7 @@ class BlockPlaceholder:
         return getattr(self.actual_block, attr)
 
 # TODO modify so camera movement is part of same animation as create and move
+# TODO modify this so it does NOT create blocks, and then move positioning to movement?
 class BlockManager:
     """Handles block creation, queuing, and workflow management."""
 
@@ -1492,7 +1492,7 @@ class BlockManager:
 
         return placeholder
 
-# TODO change this, see TODOs within
+#TODO change this, see TODOs within
     def add_block(self, parents=None, name=None) -> KaspaLogicalBlock:
         """Create and animate a block immediately."""
         placeholder = self.queue_block(parents=parents, name=name, timestamp=0)
@@ -1553,11 +1553,20 @@ class BlockManager:
         if not parents:
             return self.dag.config.genesis_x, self.dag.config.genesis_y
 
+        x_position = self._calculate_x_position(parents)
+        y_position = self._calculate_y_position(x_position)
+        return x_position, y_position
+
+    def _calculate_x_position(self, parents: List[KaspaLogicalBlock]) -> float:
+        """Calculate x-position based on rightmost parent."""
         # Use rightmost parent for x-position
         rightmost_parent = max(parents, key=lambda p: p.visual_block.square.get_center()[0])
         parent_pos = rightmost_parent.visual_block.square.get_center()
         x_position = parent_pos[0] + self.dag.config.horizontal_spacing
+        return x_position
 
+    def _calculate_y_position(self, x_position: float) -> float:
+        """Calculate y-position based on blocks at same x-position."""
         # Find blocks at same x-position
         same_x_blocks = [
             b for b in self.dag.all_blocks
@@ -1566,13 +1575,11 @@ class BlockManager:
 
         if not same_x_blocks:
             # First block at this x - use gen_y y
-            y_position = self.dag.config.genesis_y
+            return self.dag.config.genesis_y
         else:
             # Stack above topmost neighbor
             topmost_y = max(b.visual_block.get_center()[1] for b in same_x_blocks)
-            y_position = topmost_y + self.dag.config.vertical_spacing
-
-        return x_position, y_position
+            return topmost_y + self.dag.config.vertical_spacing
 
     def animate_dag_repositioning(self, x_positions: Set[float]):
         """Center columns of blocks around genesis y-position."""
@@ -2524,7 +2531,7 @@ class GhostDAGHighlighter:
 
                         # Check if this would exceed k
                         blue_count = len(affected_blue_in_anticone) + 1  # +1 for candidate
-                        if blue_count > context_block.kaspa_config.k:
+                        if blue_count > context_block.config.k:
                             second_check_failed = True
                             self.dag.scene.caption(
                                 f"Second check FAILED: {blue_block.name} would have {blue_count} $>$ k blues in anticone")
@@ -2567,7 +2574,7 @@ class GhostDAGHighlighter:
 
             # Final decision based on both checks
             can_be_blue = context_block.can_be_blue_local(
-                candidate, local_blue_status, context_block.kaspa_config.k
+                candidate, local_blue_status, context_block.config.k
             )
 
             if can_be_blue:

@@ -7,10 +7,10 @@ __all__ = ["KaspaLogicalBlock", "VirtualKaspaBlock"]
 import secrets
 from dataclasses import dataclass, field
 
-from manim import ParsableManimColor, Mobject
+from manim import ParsableManimColor, AnimationGroup, Animation
 
 from .visual_block import KaspaVisualBlock
-from typing import Optional, List, Set, Any, Dict
+from typing import Optional, List, Set, Dict, Union, Iterator
 
 from typing import TYPE_CHECKING
 
@@ -509,471 +509,139 @@ class KaspaLogicalBlock:
         """
         return self._visual
 
-    def __getattr__(self, attr: str) -> Any:
-        # TODO: Remove proxy delegation pattern for better type safety
-        #
-        # CURRENT ISSUE:
-        # The proxy pattern silently delegates all unknown attributes to self._visual,
-        # which hides bugs like method name mismatches (e.g., _can_be_blue_local vs can_be_blue_local).
-        # This makes debugging difficult and prevents IDE from catching typos.
-        #
-        # REFACTORED APPROACH:
-        # Since refactoring, we now explicitly wrap visual methods (set_block_fill_color,
-        # reset_block_stroke_width, etc.) in KaspaLogicalBlock with proper type hints
-        # and documentation. These wrappers provide a clean, documented API.
-        #
-        # BENEFITS OF REMOVING PROXY:
-        # 1. Type Safety: IDE catches typos like block.set_block_flll_color immediately
-        # 2. Clear API: Only explicitly wrapped methods are available
-        # 3. Better Debugging: No more hidden delegation issues
-        #
-        # MIGRATION STEPS:
-        # 1. Replace this method with: raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
-        # 2. Audit codebase for any visual method calls not explicitly wrapped
-        # 3. Apply same change to BitcoinLogicalBlock.__getattr__ for consistency
-        #
-        # The proxy pattern was originally designed for convenience (see blanim.py:83-91)
-        # but explicit wrappers provide better developer experience and error catching.
-        #
-        if attr == '_visual':
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '_visual'")
-        print(f"DEBUG: __getattr__ called for attribute: {attr}")
-        return getattr(self._visual, attr)
-
-    ########################################
-    # Visual Appearance Methods - Delegated to Visual Block
-    ########################################
-
-    def set_block_fill_color(self, manim_color:ParsableManimColor) -> Mobject:
-        """
-        Returns an animatable Mobject for block fill color transformation.
-
-        This method delegates to the visual block while maintaining type hints
-        and providing a clean public API through the proxy pattern.
-
-        Parameters:
-            manim_color: Any parsable Manim color (RED, BLUE, "#FF0000", (1,0,0), etc.)
-                        Supports predefined colors, hex strings, and RGB tuples.
-
-        Returns:
-            Mobject: An animatable version of the block that changes fill color
-                    when passed to scene.play(). Supports method chaining.
-
-        Examples:
-            # Single color change
-            self.play(block.set_block_fill_color(RED))
-
-            # Chain with scale transformation
-            self.play(block.set_block_fill_color(BLUE).scale(2))
-
-            # Chain multiple transformations
-            self.play(block.set_block_fill_color(GREEN).scale(1.5).rotate(PI/4))
-
-            # Use in AnimationGroup with other animations
-            self.play(
-                block.set_block_fill_color(YELLOW),
-                other_block.animate.shift(RIGHT)
-            )
-
-            # Using different color formats
-            self.play(block.set_block_fill_color("#FF5733"))        # Hex color
-            self.play(block.set_block_fill_color((1, 0, 0)))        # RGB tuple Red
-            self.play(block.set_block_fill_color((0, 1, 0)))        # RGB tuple Green
-
-        Performance Notes:
-            Method chaining is more efficient than separate play() calls as it
-            creates a single animation rather than multiple sequential ones.
-
-            # Less efficient (creates 2 animations):
-            self.play(block.set_block_fill_color(RED))
-            self.play(block.scale(2))
-
-            # More efficient (creates 1 combined animation):
-            self.play(block.set_block_fill_color(RED).scale(2))
-
-        See Also:
-            set_block_stroke_color: Change border/stroke color
-            set_block_opacity: Change transparency/fill opacity
-            create_highlight_animation: Create stroke highlight effect
-            visual_block.set_block_fill_color: Direct visual block implementation
-
-        Notes:
-            - Follows Manim's .animate convention for chaining
-            - The returned Mobject is not an Animation object itself
-            - Multiple animations on the same mobject in one play() call
-              follow "last animation wins" rule unless chained
-            - Uses the proxy delegation pattern
-        """
-        return self.visual_block.set_block_fill_color(manim_color)
-
-    def reset_block_fill_color(self) -> Mobject:
-        """
-        Returns an animatable Mobject to reset fill color to creation-time values.
-
-        This method delegates to the visual block while maintaining type hints
-        and providing a clean public API through the proxy pattern. The reset
-        restores the block's fill color to what it was when initially created,
-        preserving the user's original design intent.
-
-        Returns:
-            Mobject: An animatable version of the block that resets fill color
-                    when passed to scene.play(). The returned object supports
-                    method chaining with other .animate transformations.
-
-        Examples:
-            # Reset fill color after temporary highlighting
-            self.play(block.set_block_fill_color(RED))
-            self.wait(1)
-            self.play(block.reset_block_fill_color())
-
-            # Chain reset with other transformations
-            self.play(block.reset_block_fill_color().scale(1.2))
-
-            # Reset multiple blocks simultaneously
-            self.play(
-                block1.reset_block_fill_color(),
-                block2.reset_block_fill_color(),
-                block3.reset_block_fill_color()
-            )
-
-            # Use in animation sequences
-            self.play(
-                block.set_block_fill_color(YELLOW),
-                block.scale(1.5)
-            )
-            self.play(block.reset_block_fill_color())
-
-        Implementation Details:
-            Uses the proxy delegation pattern to forward the reset operation
-            to the visual block's reset_block_fill_color() method. The visual
-            block stores creation-time values during initialization and uses
-            those for the reset rather than current config values.
-
-        Performance Notes:
-            - Reset operations are single-property animations and are very fast
-            - Can be chained with other animations for combined effects
-            - More efficient than manually tracking and restoring color values
-
-            # Efficient: Combined reset and transform
-            self.play(block.reset_block_fill_color().shift(DOWN))
-
-            # Less efficient: Separate operations
-            self.play(block.reset_block_fill_color())
-            self.play(block.shift(DOWN))
-
-        See Also:
-            set_block_fill_color: Change fill color to any specified color
-            reset_block_stroke_color: Reset stroke color to creation values
-            visual_block.reset_block_fill_color: Direct visual block implementation
-
-        Notes:
-            - Returns animatable mobject, not Animation object
-            - Only affects fill color, preserves stroke color and other properties
-            - Uses creation-time values, not current config values
-            - Follows the proxy delegation pattern for clean API separation
-            - Preserves user's original design intent regardless of config changes
-        """
-        return self.visual_block.reset_block_fill_color()
-
-    def set_block_stroke_color(self, manim_color: ParsableManimColor) -> Mobject:
-        """
-        Returns an animatable Mobject for block stroke color transformation.
-
-        This method delegates to the visual block while maintaining type hints
-        and providing a clean public API through the proxy pattern. The stroke
-        color change affects only the border outline of the block.
-
-        Parameters:
-            manim_color: Any parsable Manim color (RED, BLUE, "#FF0000", (1,0,0), etc.)
-                        Supports predefined colors, hex strings, and RGB tuples.
-                        Colors are applied to the block's stroke while preserving
-                        fill color and other visual properties.
-
-        Returns:
-            Mobject: An animatable version of the block that changes stroke color
-                    when passed to scene.play(). The returned object supports
-                    method chaining with other .animate transformations.
-
-        Examples:
-            # Single stroke color change
-            self.play(block.set_block_stroke_color(YELLOW))
-
-            # Chain with position change
-            self.play(block.set_block_stroke_color(GREEN).shift(UP))
-
-            # Chain multiple transformations
-            self.play(
-                block.set_block_stroke_color(ORANGE)
-                      .scale(1.5)
-                      .rotate(PI/6)
-                      .shift(RIGHT * 2)
-            )
-
-            # Use in AnimationGroup with other animations
-            self.play(
-                block.set_block_stroke_color(PURPLE),
-                other_block.animate.shift(LEFT)
-            )
-
-            # Using different color formats
-            self.play(block.set_block_stroke_color("#FF5733"))     # Hex color
-            self.play(block.set_block_stroke_color((1, 0, 0)))      # RGB Red
-            self.play(block.set_block_stroke_color((0, 1, 0)))      # RGB Green
-
-        Implementation Details:
-            Uses the proxy delegation pattern to forward the stroke color
-            operation to the visual block's set_block_stroke_color() method.
-            The visual block handles the actual Manim .animate system
-            implementation while the logical block provides the public API.
-
-        Performance Notes:
-            - Method chaining creates a single optimized animation
-            - Separate play() calls create multiple sequential animations
-            - Chaining is both more efficient and provides smoother visual transitions
-
-            # Efficient: Single combined animation
-            self.play(block.set_block_stroke_color(RED).scale(2))
-
-            # Less efficient: Multiple separate animations
-            self.play(block.set_block_stroke_color(RED))
-            self.play(block.scale(2))
-
-        See Also:
-            set_block_fill_color: Change fill color instead of stroke
-            reset_block_stroke_color: Reset stroke to creation values
-            visual_block.set_block_stroke_color: Direct visual block implementation
-
-        Notes:
-            - Returns animatable mobject, not Animation object
-            - Preserves fill color, opacity, and other properties
-            - Only modifies the stroke color of the block's square
-            - Follows Manim's .animate convention for chaining
-            - Uses the proxy delegation pattern for clean API separation
-        """
-        return self.visual_block.set_block_stroke_color(manim_color)
-
-    def reset_block_stroke_color(self) -> Mobject:
-        """
-        Returns an animatable Mobject to reset stroke color to creation-time values.
-
-        This method delegates to the visual block while maintaining type hints
-        and providing a clean public API through the proxy pattern. The reset
-        restores the block's stroke color to what it was when initially created,
-        preserving the user's original design intent.
-
-        Returns:
-            Mobject: An animatable version of the block that resets stroke color
-                    when passed to scene.play(). The returned object supports
-                    method chaining with other .animate transformations.
-
-        Examples:
-            # Reset stroke color after temporary highlighting
-            self.play(block.set_block_stroke_color(YELLOW))
-            self.wait(1)
-            self.play(block.reset_block_stroke_color())
-
-            # Chain reset with other transformations
-            self.play(block.reset_block_stroke_color().scale(0.8))
-
-            # Reset multiple blocks simultaneously
-            self.play(
-                block1.reset_block_stroke_color(),
-                block2.reset_block_stroke_color(),
-                block3.reset_block_stroke_color()
-            )
-
-            # Use in consensus visualization sequences
-            self.play(
-                block.set_block_stroke_color(RED),
-                block.set_block_fill_color(BLUE)
-            )
-            self.play(block.reset_block_stroke_color())
-
-        Implementation Details:
-            Uses the proxy delegation pattern to forward the reset operation
-            to the visual block's reset_block_stroke_color() method. The visual
-            block stores creation-time values during initialization and uses
-            those for the reset rather than current config values.
-
-        Performance Notes:
-            - Reset operations are single-property animations and are very fast
-            - Can be chained with other animations for combined effects
-            - Essential for clean consensus visualization state management
-
-            # Efficient: Combined reset and transform
-            self.play(block.reset_block_stroke_color().shift(DOWN))
-
-            # Less efficient: Separate operations
-            self.play(block.reset_block_stroke_color())
-            self.play(block.shift(DOWN))
-
-        See Also:
-            set_block_stroke_color: Change stroke color to any specified color
-            reset_block_fill_color: Reset fill color to creation values
-            visual_block.reset_block_stroke_color: Direct visual block implementation
-
-        Notes:
-            - Returns animatable mobject, not Animation object
-            - Only affects stroke color, preserves fill color and other properties
-            - Uses creation-time values, not current config values
-            - Follows the proxy delegation pattern for clean API separation
-            - Essential for proper consensus visualization cleanup
-        """
-        return self.visual_block.reset_block_stroke_color()
-
-    def set_block_stroke_width(self, width: float) -> Mobject:
-        """
-        Returns an animatable Mobject for block stroke width transformation.
-
-        This method delegates to the visual block while maintaining type hints
-        and providing a clean public API through the proxy pattern. The stroke
-        width adjustment affects only the border thickness of the block.
-
-        Parameters:
-            width: float
-                  The stroke width to apply to the block's border.
-                  Typical values range from 1 (thin) to 10 (very thick).
-                  The width is applied while preserving stroke color and other
-                  visual properties.
-
-        Returns:
-            Mobject: An animatable version of the block that changes stroke width
-                    when passed to scene.play(). The returned object supports
-                    method chaining with other .animate transformations.
-
-        Examples:
-            # Single stroke width change
-            self.play(block.set_block_stroke_width(6))
-
-            # Chain with color change
-            self.play(block.set_block_stroke_width(8).set_block_stroke_color(YELLOW))
-
-            # Chain with position and scale
-            self.play(
-                block.set_block_stroke_width(10)
-                    .shift(UP)
-                    .scale(1.2)
-            )
-
-            # Use in AnimationGroup with other animations
-            self.play(
-                block.set_block_stroke_width(12),
-                other_block.animate.shift(RIGHT)
-            )
-
-            # Emphasize block during consensus evaluation
-            self.play(block.set_block_stroke_width(15))
-            self.wait(0.5)
-            self.play(block.reset_block_stroke_width())
-
-        Implementation Details:
-            Uses the proxy delegation pattern to forward the stroke width
-            operation to the visual block's set_block_stroke_width() method.
-            The visual block handles the actual Manim .animate system
-            implementation while the logical block provides the public API.
-
-        Performance Notes:
-            - Method chaining creates a single optimized animation
-            - Separate play() calls create multiple sequential animations
-            - Stroke width changes are very fast and efficient
-
-            # Efficient: Single combined animation
-            self.play(block.set_block_stroke_width(8).scale(2))
-
-            # Less efficient: Multiple separate animations
-            self.play(block.set_block_stroke_width(8))
-            self.play(block.scale(2))
-
-        See Also:
-            reset_block_stroke_width: Reset stroke width to creation value
-            set_block_stroke_color: Change stroke color instead of width
-            visual_block.set_block_stroke_width: Direct visual block implementation
-
-        Notes:
-            - Returns animatable mobject, not Animation object
-            - Preserves fill color, stroke color, and other properties
-            - Only modifies the stroke width of the block's square
-            - Follows Manim's .animate convention for chaining
-            - Uses the proxy delegation pattern for clean API separation
-        """
-        return self.visual_block.set_block_stroke_width(width)
-
-    def reset_block_stroke_width(self) -> Mobject:
-        """
-        Returns an animatable Mobject to reset stroke width to creation-time values.
-
-        This method delegates to the visual block while maintaining type hints
-        and providing a clean public API through the proxy pattern. The reset
-        restores the block's stroke width to what it was when initially created,
-        preserving the user's original design intent.
-
-        Returns:
-            Mobject: An animatable version of the block that resets stroke width
-                    when passed to scene.play(). The returned object supports
-                    method chaining with other .animate transformations.
-
-        Examples:
-            # Reset stroke width after emphasis
-            self.play(block.set_block_stroke_width(12))
-            self.wait(1)
-            self.play(block.reset_block_stroke_width())
-
-            # Chain reset with other transformations
-            self.play(block.reset_block_stroke_width().scale(0.8))
-
-            # Reset multiple blocks after consensus evaluation
-            self.play(
-                evaluated_block.reset_block_stroke_width(),
-                candidate_block.reset_block_stroke_width(),
-                selected_block.reset_block_stroke_width()
-            )
-
-            # Use in consensus visualization sequences
-            self.play(
-                block.set_block_stroke_width(10),
-                block.set_block_stroke_color(RED)
-            )
-            self.play(block.reset_block_stroke_width())
-
-            # Reset while maintaining other changes
-            self.play(block.reset_block_stroke_width().set_block_fill_color(BLUE))
-
-        Implementation Details:
-            Uses the proxy delegation pattern to forward the reset operation
-            to the visual block's reset_block_stroke_width() method. The visual
-            block stores creation-time values during initialization and uses
-            those for the reset rather than current config values.
-
-        Performance Notes:
-            - Reset operations are single-property animations and are very fast
-            - Can be chained with other animations for combined effects
-            - Essential for clean consensus visualization state management
-
-            # Efficient: Combined reset and transform
-            self.play(block.reset_block_stroke_width().shift(DOWN))
-
-            # Less efficient: Separate operations
-            self.play(block.reset_block_stroke_width())
-            self.play(block.shift(DOWN))
-
-        See Also:
-            set_block_stroke_width: Change stroke width to any specified value
-            reset_block_stroke_color: Reset stroke color to creation values
-            reset_block_fill_color: Reset fill color to creation values
-            visual_block.reset_block_stroke_width: Direct visual block implementation
-
-        Notes:
-            - Returns animatable mobject, not Animation object
-            - Only affects stroke width, preserves stroke color, fill color and other properties
-            - Uses creation-time values, not current config values
-            - Follows the proxy delegation pattern for clean API separation
-            - Essential for proper consensus visualization cleanup
-        """
-        return self.visual_block.reset_block_stroke_width()
+    @property
+    def animate(self) -> BlockAnimationBuilder:
+        """Return custom animation builder for multi-mobject chaining."""
+        return BlockAnimationBuilder(self)
 
     ########################################
     # END Logical Block
     ########################################
+
+
+class BlockAnimationBuilder(AnimationGroup):
+    """Custom animation builder that handles multi-mobject animations.
+
+    This builder enables chaining animations that target different mobjects
+    (square, label, background_rect) while avoiding Manim's "last animation
+    wins" limitation. Each mobject gets exactly one combined animation.
+
+    How to Add a New Animation:
+    -------------------------
+
+    1. Identify the target mobject (square, label, or background_rect)
+    2. Create a method that returns 'self' for chaining
+    3. Use the _animations_by_mobject pattern to combine animations:
+
+    def set_your_property(self, value) -> 'BlockAnimationBuilder':
+        # Get the target mobject
+        target = self.block.visual_block.your_mobject
+
+        # Check if we already have an animation for this mobject
+        if target not in self._animations_by_mobject:
+            # Create new animate object if none exists
+            self._animations_by_mobject[target] = target.animate
+
+        # Chain the new property onto existing animation
+        self._animations_by_mobject[target] = \
+            self._animations_by_mobject[target].set_your_property(value)
+
+        return self
+
+    Examples:
+    --------
+    # Adding a new square animation (follows existing pattern)
+    def set_square_opacity(self, opacity: float) -> 'BlockAnimationBuilder':
+        target = self.block.visual_block.square
+        if target not in self._animations_by_mobject:
+            self._animations_by_mobject[target] = target.animate
+        self._animations_by_mobject[target] = \
+            self._animations_by_mobject[target].set_fill(opacity=opacity)
+        return self
+
+    # Adding a new label animation
+    def set_label_font_size(self, size: int) -> 'BlockAnimationBuilder':
+        target = self.block.visual_block.label
+        if target not in self._animations_by_mobject:
+            self._animations_by_mobject[target] = target.animate
+        self._animations_by_mobject[target] = \
+            self._animations_by_mobject[target].set_font_size(size)
+        return self
+
+    Key Points:
+    ----------
+    - Always check if target exists in _animations_by_mobject first
+    - Use target.animate for the first animation on a mobject
+    - Chain subsequent animations onto the existing animate object
+    - Return 'self' to enable method chaining
+    - The __iter__ method automatically handles combining animations for play()
+
+    See Also:
+    --------
+    - set_fill_color: Example of square animation pattern
+    - change_label: Example of label animation pattern
+    - set_bg_rect_opacity: Example of background_rect animation pattern
+    """
+
+    def __init__(self, block: 'KaspaLogicalBlock'):
+        super().__init__()
+        self.block = block
+        self._animations_by_mobject = {}  # Track animations by target
+
+    def set_fill_color(self, color: ParsableManimColor) -> 'BlockAnimationBuilder':
+        """Set square fill color."""
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square].set_fill(color=color)
+        return self
+
+    def set_stroke_width(self, width: float) -> 'BlockAnimationBuilder':
+        """Set stroke width."""
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square].set_stroke(width=width)
+        return self
+
+    def set_stroke_color(self, color: ParsableManimColor) -> 'BlockAnimationBuilder':
+        """Set stroke color."""
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square].set_stroke(color=color)
+        return self
+
+    def change_label(self, text: Union[str, int]) -> 'BlockAnimationBuilder':
+        """Change label."""
+        self._animations_by_mobject[self.block.visual_block.label] = \
+            self.block.visual_block.change_label(text)
+        return self
+
+    def set_label_color(self, color: ParsableManimColor) -> 'BlockAnimationBuilder':
+        """Set label color."""
+        if self.block.visual_block.label not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.label] = \
+                self.block.visual_block.label.animate
+        self._animations_by_mobject[self.block.visual_block.label] = \
+            self._animations_by_mobject[self.block.visual_block.label].set_color(color)
+        return self
+
+    def set_bg_rect_opacity(self, opacity: float) -> 'BlockAnimationBuilder':
+        """Set background rectangle opacity."""
+        if self.block.visual_block.background_rect not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.background_rect] = \
+                self.block.visual_block.background_rect.animate
+        self._animations_by_mobject[self.block.visual_block.background_rect] = \
+            self._animations_by_mobject[self.block.visual_block.background_rect].set_fill(opacity=opacity)
+        return self
+
+    def __iter__(self) -> Iterator[Animation]:
+        """Return all animations, combined by mobject."""
+        return iter(self._animations_by_mobject.values())
 
 class VirtualKaspaBlock(KaspaLogicalBlock):
     """Virtual block for GHOSTDAG template calculation with visual representation."""

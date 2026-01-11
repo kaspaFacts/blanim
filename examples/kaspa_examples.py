@@ -702,7 +702,7 @@ class MergeDepthBound(HUD2DScene):
         self.caption("This demonstration uses k=2", run_time=1.0)
         self.wait(5)
         self.caption("Merge Depth Bound in this example is $4$", run_time=1.0)
-        dag.highlight(all_blocks[1])
+        self.play(all_blocks[1].animate.set_stroke_width(10).set_stroke_color(YELLOW))
         self.wait(5)
 
         other_blocks = dag.create_blocks_from_list_instant([
@@ -713,7 +713,8 @@ class MergeDepthBound(HUD2DScene):
         self.caption("This fork attempts to Merge a block NOT in the future of Merge Depth Root.", run_time=1.0)
         self.wait(5)
         self.caption("This block is rejected with a Bounded Merge Depth Violation.", run_time=1.0)
-        self.play(other_blocks[1].highlight_stroke_red())
+        self.play(other_blocks[1].animate.set_stroke_color(PURE_RED).change_label(0).set_fill_color(PURE_BLUE).set_stroke_width(8),
+                  other_blocks[0].animate.set_fill_color(PURE_BLUE).change_label("H").set_stroke_width(12))
         self.wait(3)
         dag.fade_blocks(other_blocks)
         self.wait(3)
@@ -742,7 +743,7 @@ class MergeDepthBound(HUD2DScene):
         self.caption("The Merge Depth Bound is still 4", run_time=1.0)
         self.wait(5)
         self.caption("The Merge Depth Root from this tip, is here", run_time=1.0)
-        dag.highlight(all_blocks[0])
+#        dag.highlight(all_blocks[0])
         self.wait(5)
         dag.reset_highlighting()
 
@@ -753,13 +754,13 @@ class MergeDepthBound(HUD2DScene):
         self.caption("As a new block is added to merge these tips...", run_time=1.0)
         self.wait(5)
         self.caption("Merge Depth Root is here", run_time=1.0)
-        dag.highlight(all_blocks[2])
+#        dag.highlight(all_blocks[2])
         self.wait(5)
         self.caption("Even though there is a red block that violates the Merge Depth Bound", run_time=1.0)
-        self.play(other_blocks[0].square.animate.set_fill(color=RED, opacity=0.7))
+        self.play(other_blocks[0].visual_block.square.animate.set_fill(color=RED, opacity=0.7))
         self.wait(5)
         self.caption("This block is \"Kosherized\" by the Blue block in the Mergeset", run_time=1.0)
-        self.play(other_blocks[1].square.animate.set_fill(color=BLUE, opacity=0.7))
+        self.play(other_blocks[1].visual_block.square.animate.set_fill(color=BLUE, opacity=0.7))
         self.wait(5)
         self.caption("This is the only exception to the Merge Depth Bound", run_time=1.0)
         self.wait(8)
@@ -891,11 +892,11 @@ class LongestvsHeaviest(HUD2DScene):
         self.wait(5)
 
         self.play(
-            all_blocks[1].change_label("1.5"),
-            all_blocks[2].change_label("2"),
-            all_blocks[3].change_label("2.5"),
-            all_blocks[4].change_label("3"),
-            all_blocks[5].change_label("3.5"),
+            all_blocks[1].visual_block.change_label("1.5"),
+            all_blocks[2].visual_block.change_label("2"),
+            all_blocks[3].visual_block.change_label("2.5"),
+            all_blocks[4].visual_block.change_label("3"),
+            all_blocks[5].visual_block.change_label("3.5"),
         )
 
         self.caption("Inspecting the Work required to create these Chains...", run_time=1.0)
@@ -942,11 +943,11 @@ class LongestvsHeaviest(HUD2DScene):
         self.wait(5)
 
         self.play(
-            all_blocks[1].change_label("1.5"),
-            all_blocks[2].change_label("2"),
-            all_blocks[3].change_label("2.5"),
-            all_blocks[4].change_label("3"),
-            all_blocks[5].change_label("3.5"),
+            all_blocks[1].visual_block.change_label("1.5"),
+            all_blocks[2].visual_block.change_label("2"),
+            all_blocks[3].visual_block.change_label("2.5"),
+            all_blocks[4].visual_block.change_label("3"),
+            all_blocks[5].visual_block.change_label("3.5"),
         )
 
         self.caption("Inspect the Work of these competing Chains, just like Bitcoin.", run_time=1.0)
@@ -965,9 +966,9 @@ class LongestvsHeaviest(HUD2DScene):
         self.wait(3)
         dag.highlight(other_blocks[3])
         dag.highlight(other_blocks[2])
-        self.play(self.camera.frame.animate.move_to(all_blocks[4].get_center()), run_time=1.0)
+        self.play(self.camera.frame.animate.move_to(all_blocks[4].visual_block.get_center()), run_time=1.0)
         dag.highlight(other_blocks[1])
-        self.play(self.camera.frame.animate.move_to(all_blocks[3].get_center()), run_time=1.0)
+        self.play(self.camera.frame.animate.move_to(all_blocks[3].visual_block.get_center()), run_time=1.0)
         dag.highlight(other_blocks[0])
         dag.highlight(all_blocks[0])
         self.wait(3)
@@ -1014,16 +1015,16 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
         dag.fade_blocks(block_gen, block_e, block_d, block_c, block_b, block_i, block_h, block_f, block_k)
         self.caption("Tips M, J, L compete - highest Blue Score wins", run_time=caption_time)
-        self.play(block_m.change_label(block_m.ghostdag.blue_score))
-        self.play(block_j.change_label(block_j.ghostdag.blue_score))
-        self.play(block_l.change_label(block_l.ghostdag.blue_score))
+        self.play(block_m.visual_block.change_label(block_m.ghostdag.blue_score))
+        self.play(block_j.visual_block.change_label(block_j.ghostdag.blue_score))
+        self.play(block_l.visual_block.change_label(block_l.ghostdag.blue_score))
         self.play(block_m.set_block_stroke_color(YELLOW), run_time=animation_coloring_time)
         self.caption("M selected: highest Blue Score among tips", run_time=caption_time)
         self.play(block_m.set_block_fill_color(PURE_BLUE), run_time=animation_coloring_time)
         self.play(block_m.reset_block_stroke_color(), run_time=animation_coloring_time)
-        self.play(block_m.change_label(block_m.name))
-        self.play(block_j.change_label(block_j.name))
-        self.play(block_l.change_label(block_l.name))
+        self.play(block_m.visual_block.change_label(block_m.name))
+        self.play(block_j.visual_block.change_label(block_j.name))
+        self.play(block_l.visual_block.change_label(block_l.name))
         self.wait(animation_wait_time)
         self.clear_caption()
 
