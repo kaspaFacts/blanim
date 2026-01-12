@@ -685,84 +685,159 @@ class MergeDepthBound(HUD2DScene):
     """Explainer for Merge Depth."""
 
     def construct(self):
+        wait_time = 5
+
         dag = KaspaDAG(scene=self)
         dag.set_k(2)
 
         self.wait(1)
-        self.narrate("Kaspa Merge Depth Bound - Oversimplified", run_time=1.0)
+        self.narrate("Kaspa Merge Depth Bound - Oversimplified")
         # Create entire structure from scratch, including genesis
         all_blocks = dag.create_blocks_from_list_instant([
-            ("Gen", None),
-            ("b1", ["Gen"]),
-            ("b2", ["b1"]),
-            ("b3", ["b2"]),
-            ("b4", ["b3"]),
-            ("b5", ["b4"]),
+            ("Gen", None, "G"),
+            ("b1", ["Gen"], "A"),
+            ("b2", ["b1"], "B"),
+            ("b3", ["b2"], "C"),
+            ("b4", ["b3"], "D"),
+            ("b5", ["b4"], "E"),
         ])
-        self.caption("This demonstration uses k=2", run_time=1.0)
-        self.wait(5)
-        self.caption("Merge Depth Bound in this example is $4$", run_time=1.0)
-        self.play(all_blocks[1].animate.set_stroke_width(10).set_stroke_color(YELLOW))
-        self.wait(5)
+        self.caption("This demonstration uses k=2")
+        self.wait(wait_time)
+        self.caption("Merge Depth Bound in this example is $4$")
+        self.wait(wait_time)
+        self.play(all_blocks[5].animate.set_stroke_color(YELLOW).set_stroke_width(7))
+        self.play(all_blocks[4].animate.set_label_text(1).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[5].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[3].animate.set_label_text(2).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[4].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[2].animate.set_label_text(3).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[3].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[1].animate.set_stroke_width(8).set_stroke_color(YELLOW).set_label_text(4),
+                  all_blocks[2].animate.reset_stroke_color().reset_stroke_width())
+        self.wait(wait_time)
 
         other_blocks = dag.create_blocks_from_list_instant([
-            ("b1a", ["Gen"]),
-            ("b5a", ["b1a","b4"]),
+            ("b1a", ["Gen"], "F"),
+            ("b5a", ["b1a","b4"], "H"),
         ])
 
-        self.caption("This fork attempts to Merge a block NOT in the future of Merge Depth Root.", run_time=1.0)
-        self.wait(5)
-        self.caption("This block is rejected with a Bounded Merge Depth Violation.", run_time=1.0)
-        self.play(other_blocks[1].animate.set_stroke_color(PURE_RED).change_label(0).set_fill_color(PURE_BLUE).set_stroke_width(8),
-                  other_blocks[0].animate.set_fill_color(PURE_BLUE).change_label("H").set_stroke_width(12))
-        self.wait(3)
+        self.play(all_blocks[1].animate.reset_stroke_width().reset_stroke_color().reset_label_text(),
+                  all_blocks[2].animate.reset_label_text(),
+                  all_blocks[3].animate.reset_label_text(),
+                  all_blocks[4].animate.reset_label_text(),
+                  )
+
+        self.wait(wait_time)
+        self.caption("From Block H, identify the Merge Depth Root.")
+        self.wait(wait_time)
+        self.play(other_blocks[1].animate.set_stroke_color(YELLOW).set_stroke_width(7))
+        self.play(all_blocks[4].animate.set_label_text(1).set_stroke_color(YELLOW).set_stroke_width(7),
+                  other_blocks[1].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[3].animate.set_label_text(2).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[4].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[2].animate.set_label_text(3).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[3].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[1].animate.set_stroke_width(8).set_stroke_color(YELLOW).set_label_text(4),
+                  all_blocks[2].animate.reset_stroke_color().reset_stroke_width())
+
+        self.wait(wait_time)
+        self.caption("Block H attempts to Merge a block NOT in the Future of Merge Depth Root.")
+        self.wait(wait_time)
+        self.caption("Because Block F violates the Merge Depth Bound...")
+        self.play(other_blocks[0].animate.set_fill_color(BLACK))
+        self.wait(wait_time)
+        self.caption("Block H is invalid.")
+        self.play(other_blocks[1].animate.set_fill_color(BLACK))
+        self.wait(wait_time)
+        self.caption("Block H will NOT become a Parent of any Future blocks.")
+        self.wait(wait_time)
         dag.fade_blocks(other_blocks)
-        self.wait(3)
-        self.clear_caption(run_time=1.0)
+        self.wait(wait_time)
+        self.clear_caption()
         dag.clear_all_blocks()
 
         all_blocks = dag.create_blocks_from_list_instant([
-            ("Gen", None),
-            ("b1", ["Gen"]),
-            ("b2", ["b1"]),
-            ("b3", ["b2"]),
-            ("b4", ["b3"]),
-            ("b5", ["b4"]),
+            ("Gen", None, "G"),
+            ("b1", ["Gen"], "A"),
+            ("b2", ["b1"], "B"),
+            ("b3", ["b2"], "C"),
+            ("b4", ["b3"], "D"),
+            ("b5", ["b4"], "E"),
         ])
 
-        self.caption("Back to our current view of the DAG", run_time=1.0)
-        self.wait(5)
+        self.caption("Back to our current view of the DAG")
+        self.wait(wait_time)
 
         other_blocks = dag.create_blocks_from_list_instant([
-            ("b1a", ["Gen"]),
-            ("b4a", ["b1a","b3"]),
+            ("b1a", ["Gen"], "F"),
+            ("b4a", ["b1a","b3"], "H"),
         ])
 
-        self.caption("This fork merges a block that does not violate Merge Depth Bound", run_time=1.0)
-        self.wait(5)
-        self.caption("The Merge Depth Bound is still 4", run_time=1.0)
-        self.wait(5)
-        self.caption("The Merge Depth Root from this tip, is here", run_time=1.0)
-#        dag.highlight(all_blocks[0])
-        self.wait(5)
-        dag.reset_highlighting()
+        self.caption("The Merge Depth Bound is still 4.")
+        self.wait(wait_time)
+        self.play(other_blocks[1].animate.set_stroke_color(YELLOW).set_stroke_width(7))
+        self.play(all_blocks[3].animate.set_label_text(1).set_stroke_color(YELLOW).set_stroke_width(7),
+                  other_blocks[1].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[2].animate.set_label_text(2).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[3].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[1].animate.set_label_text(3).set_stroke_color(YELLOW).set_stroke_width(7),
+                  all_blocks[2].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[0].animate.set_stroke_width(8).set_stroke_color(YELLOW).set_label_text(4),
+                  all_blocks[1].animate.reset_stroke_color().reset_stroke_width())
+        self.wait(wait_time)
+        self.caption("Block H Merges Block F")
+        self.wait(wait_time)
+        self.caption("Block F is in the Future of the Merge Depth Root, Block F is valid.")
+        self.wait(wait_time)
+        self.caption("Block F does NOT invalidate Block H, Block H can be included as a Parent.")
+        self.wait(wait_time)
+
+        self.play(all_blocks[0].animate.reset_stroke_width().reset_stroke_color().reset_label_text(),
+                  all_blocks[1].animate.reset_label_text(),
+                  all_blocks[2].animate.reset_label_text(),
+                  all_blocks[3].animate.reset_label_text(),
+                  )
+        self.wait(wait_time)
 
         final_block = dag.create_blocks_from_list_instant([
-            ("b6", ["b4a","b5"]),
+            ("b6", ["b4a","b5"], "I"),
         ])
 
-        self.caption("As a new block is added to merge these tips...", run_time=1.0)
-        self.wait(5)
-        self.caption("Merge Depth Root is here", run_time=1.0)
-#        dag.highlight(all_blocks[2])
-        self.wait(5)
-        self.caption("Even though there is a red block that violates the Merge Depth Bound", run_time=1.0)
-        self.play(other_blocks[0].visual_block.square.animate.set_fill(color=RED, opacity=0.7))
-        self.wait(5)
-        self.caption("This block is \"Kosherized\" by the Blue block in the Mergeset", run_time=1.0)
-        self.play(other_blocks[1].visual_block.square.animate.set_fill(color=BLUE, opacity=0.7))
-        self.wait(5)
-        self.caption("This is the only exception to the Merge Depth Bound", run_time=1.0)
+        self.caption("Block I is added to Merge blocks E and H.")
+        self.wait(wait_time)
+        self.caption("The Merge Depth Root from Block I is 4.")
+        self.wait(wait_time)
+        self.play(final_block[0].animate.set_stroke_color(YELLOW).set_stroke_width(7))
+        self.play(all_blocks[5].animate.set_stroke_color(YELLOW).set_label_text(1).set_stroke_width(7),
+                  final_block[0].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[4].animate.set_stroke_color(YELLOW).set_label_text(2).set_stroke_width(7),
+                  all_blocks[5].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[3].animate.set_stroke_color(YELLOW).set_label_text(3).set_stroke_width(7),
+                  all_blocks[4].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[2].animate.set_stroke_color(YELLOW).set_stroke_width(8).set_label_text(4),
+                  all_blocks[3].animate.reset_stroke_color().reset_stroke_width())
+        self.wait(wait_time)
+        self.caption("Even though there is a red block that violates the Merge Depth Bound")
+        self.play(other_blocks[0].animate.set_fill_color(color=PURE_RED))
+        self.wait(wait_time)
+        self.play(all_blocks[5].animate.reset_label_text(),
+                  all_blocks[4].animate.reset_label_text(),
+                  all_blocks[3].animate.reset_label_text(),
+                  all_blocks[2].animate.reset_label_text().reset_stroke_width().reset_stroke_color())
+        self.wait(wait_time)
+        self.caption("This block is \"Kosherized\" by the Blue block in the Mergeset")
+        self.play(other_blocks[1].animate.set_fill_color(color=PURE_BLUE))
+        self.play(other_blocks[1].animate.set_stroke_color(YELLOW).set_stroke_width(7))
+        self.play(all_blocks[3].animate.set_stroke_color(YELLOW).set_stroke_width(7).set_label_text(1),
+                  other_blocks[1].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[2].animate.set_stroke_color(YELLOW).set_stroke_width(7).set_label_text(2),
+                  all_blocks[3].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[1].animate.set_stroke_color(YELLOW).set_stroke_width(7).set_label_text(3),
+                  all_blocks[2].animate.reset_stroke_color().reset_stroke_width())
+        self.play(all_blocks[0].animate.set_stroke_color(YELLOW).set_stroke_width(7).set_label_text(4),
+                  all_blocks[1].animate.reset_stroke_color().reset_stroke_width())
+        self.wait(wait_time)
+        self.caption("This is the only exception to the Merge Depth Bound")
         self.wait(8)
 
 class DAGvsCHAIN(HUD2DScene):

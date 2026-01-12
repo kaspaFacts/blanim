@@ -41,11 +41,12 @@ class BaseVisualBlock(VGroup):
         self._label_text = label_text
 
         # Store creation-time values for true reset
-        self._creation_block_fill_color = config.block_color
+        self.creation_block_fill_color = config.block_color
 
-        self._creation_block_stroke_color = config.stroke_color
-        self._creation_block_stroke_width = config.stroke_width
+        self.creation_block_stroke_color = config.stroke_color
+        self.creation_block_stroke_width = config.stroke_width
 
+        self.creation_block_label = label_text
 
         #####Square#####
         self.square = Square(
@@ -103,6 +104,7 @@ class BaseVisualBlock(VGroup):
 
 #TODO creates label by default but setting "" or " " breaks positioning of get_center on vgroup, figure out how to create invisible label that does not break positioning,
 #   similar to narrate/caption  (Pretty sure positioning is fixed by overriding get_center() to return center of square, need to test label after setting to empty)
+    # TODO CREATING a block with an empty label also breaks positioning for when labels are changed.
     def create_with_label(self):
 
         run_time = self.config.create_run_time
@@ -189,7 +191,7 @@ class BaseVisualBlock(VGroup):
         return self.square.get_center()
 
     ########################################
-    # Visual Appearance Methods
+    # Visual Appearance Methods  # TODO these are set for destroy - replaced by logical block methods for chaining animations
     ########################################
 
     def set_block_fill_color(self, manim_color:ParsableManimColor) -> Mobject:
@@ -332,7 +334,7 @@ class BaseVisualBlock(VGroup):
             - Follows blanim's animation return pattern for consistency
             - Creation values are stored during BaseVisualBlock initialization
         """
-        return self.square.animate.set_fill(color=self._creation_block_fill_color)
+        return self.square.animate.set_fill(color=self.creation_block_fill_color)
 
     def set_block_stroke_color(self, manim_color: ParsableManimColor) -> Mobject:
         """
@@ -478,7 +480,7 @@ class BaseVisualBlock(VGroup):
             - Essential for proper consensus visualization cleanup
             - Follows blanim's animation return pattern for consistency
         """
-        return self.square.animate.set_stroke(color=self._creation_block_stroke_color)
+        return self.square.animate.set_stroke(color=self.creation_block_stroke_color)
 
     def set_block_stroke_width(self, width: float) -> Mobject:
         """
@@ -632,7 +634,7 @@ class BaseVisualBlock(VGroup):
             - Follows blanim's animation return pattern for consistency
             - Creation values are stored during BaseVisualBlock initialization
         """
-        return self.square.animate.set_stroke(width=self._creation_block_stroke_width)
+        return self.square.animate.set_stroke(width=self.creation_block_stroke_width)
 
 class BlockConfigProtocol(Protocol):
     """

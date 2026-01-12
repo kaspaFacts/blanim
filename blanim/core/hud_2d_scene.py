@@ -348,7 +348,7 @@ class HUD2DScene(ThreeDScene):
                 processed_args.append(arg)
         return super().play(*processed_args, **kwargs)
 
-    def narrate(self, text: str, run_time: float = 0.5, **kwargs: Any) -> None:
+    def narrate(self, text: str, run_time: float = 1.0, **kwargs: Any) -> None:
         r"""Update upper narration text with animation.
 
         Uses the primer pattern to transform the upper narration text. The primer
@@ -460,7 +460,7 @@ class HUD2DScene(ThreeDScene):
             **kwargs
         )
 
-    def caption(self, text: str, run_time: float = 0.5, **kwargs: Any) -> None:
+    def caption(self, text: str, run_time: float = 1.0, **kwargs: Any) -> None:
         r"""Update lower caption text with animation.
 
         Uses the primer pattern to transform the lower caption text. The primer
@@ -577,7 +577,7 @@ class HUD2DScene(ThreeDScene):
             **kwargs
         )
 
-    def clear_narrate(self, run_time: float = 0.5, **kwargs: Any) -> None:
+    def clear_narrate(self, run_time: float = 1.0, **kwargs: Any) -> None:
         """Clear upper narration text with animation.
 
         Transforms the narration to invisible text (BLACK color) to effectively
@@ -627,7 +627,7 @@ class HUD2DScene(ThreeDScene):
             **kwargs
         )
 
-    def clear_caption(self, run_time: float = 0.5, **kwargs: Any) -> None:
+    def clear_caption(self, run_time: float = 1.0, **kwargs: Any) -> None:
         """Clear lower caption text with animation.
 
         Transforms the caption to invisible text (BLACK color) to effectively

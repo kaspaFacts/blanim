@@ -597,6 +597,18 @@ class BlockAnimationBuilder(AnimationGroup):
             self._animations_by_mobject[self.block.visual_block.square].set_fill(color=color)
         return self
 
+    def reset_fill_color(self) -> 'BlockAnimationBuilder':
+        """Reset fill color to block creation fill color.
+        NOTE: if setting and resetting color on the same animation chain(or within the same play call), only one will
+        win, typically the last one called.
+        """
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square].set_fill(color=self.block.visual_block.creation_block_fill_color)
+        return self
+
     def set_stroke_width(self, width: float) -> 'BlockAnimationBuilder':
         """Set stroke width."""
         if self.block.visual_block.square not in self._animations_by_mobject:
@@ -604,6 +616,18 @@ class BlockAnimationBuilder(AnimationGroup):
                 self.block.visual_block.square.animate
         self._animations_by_mobject[self.block.visual_block.square] = \
             self._animations_by_mobject[self.block.visual_block.square].set_stroke(width=width)
+        return self
+
+    def reset_stroke_width(self) -> 'BlockAnimationBuilder':
+        """Reset stroke width to block creation stroke width.
+        NOTE: if setting and resetting stroke on the same animation chain(or within the same play call), only one will
+        win, typically the last one called.
+        """
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square].set_stroke(width=self.block.visual_block.creation_block_stroke_width)
         return self
 
     def set_stroke_color(self, color: ParsableManimColor) -> 'BlockAnimationBuilder':
@@ -615,12 +639,31 @@ class BlockAnimationBuilder(AnimationGroup):
             self._animations_by_mobject[self.block.visual_block.square].set_stroke(color=color)
         return self
 
-    def change_label(self, text: Union[str, int]) -> 'BlockAnimationBuilder':
-        """Change label."""
+    def reset_stroke_color(self) -> 'BlockAnimationBuilder':
+        """Reset stroke color to block creation stroke color.
+        NOTE: if setting and resetting stroke on the same animation chain(or within the same play call), only one will
+        win, typically the last one called.
+        """
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square].set_stroke(color=self.block.visual_block.creation_block_stroke_color)
+        return self
+
+    def set_label_text(self, text: Union[str, int]) -> 'BlockAnimationBuilder':
+        """Set label text."""
         self._animations_by_mobject[self.block.visual_block.label] = \
             self.block.visual_block.change_label(text)
         return self
 
+    def reset_label_text(self) -> 'BlockAnimationBuilder':
+        """Reset label text to creation label text."""
+        self._animations_by_mobject[self.block.visual_block.label] = \
+            self.block.visual_block.change_label(self.block.visual_block.creation_block_label)
+        return self
+
+    # TODO unsure if this works with transform method required for label handling
     def set_label_color(self, color: ParsableManimColor) -> 'BlockAnimationBuilder':
         """Set label color."""
         if self.block.visual_block.label not in self._animations_by_mobject:
