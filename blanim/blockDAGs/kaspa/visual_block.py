@@ -425,7 +425,7 @@ class KaspaVisualBlock(BaseVisualBlock):
     def create_pulsing_highlight(self, color=None, min_width=None, max_width=None) -> Callable:
         """Create updater function for pulsing stroke effect using config values."""
         original_width = self.kaspa_config.stroke_width
-        highlighted_width = self.kaspa_config.context_block_stroke_width
+        highlighted_width = original_width + 3
         context_color = self.kaspa_config.context_block_color
         cycle_time = self.kaspa_config.context_block_cycle_time
 

@@ -605,6 +605,91 @@ def test_theme() -> KaspaConfig:
         "vertical_spacing": 1.5,
     }
 
+class PastFutureAnticone(HUD2DScene):
+    """Explainer for Dag Relationships."""
+
+    def construct(self):
+        wait_time = 5
+
+        dag = KaspaDAG(scene=self)
+        dag.set_k(18)
+        dag.config.genesis_x = -4 # TODO how do we prevent this from being set AFTER a gen block is added/created
+
+        self.wait(1)
+        self.narrate("Kaspa DAG Relationships")
+
+        block_g, block_a, block_b, block_c, block_d = dag.create_blocks_from_list_instant([
+            ("Gen", None, "G"),
+            ("b1", ["Gen"], "A"),
+            ("b2", ["b1"], "B"),
+            ("b3", ["b2"], "C"),
+            ("b4", ["b3"], "D"),
+        ])
+
+        self.caption("A Linear Chain is a restricted DAG.")
+        self.wait(wait_time)
+        self.caption("Here we have a Chain of Blocks.")
+        self.wait(wait_time)
+        self.caption("A BlockChain has Past relationships.")
+        dag.highlight_past(block_b)
+        self.wait(wait_time)
+        self.caption("The Past of Block B includes G and A.")
+        self.wait(wait_time)
+        self.caption("A BlockChain has Future relationships.")
+        dag.highlight_future(block_b)
+        self.wait(wait_time)
+        self.caption("The Future of Block B includes C and D.")
+        self.wait(wait_time)
+        self.caption("A BlockChain is restricted to Past and Future relationships.")
+        dag.reset_highlighting()
+        self.wait(wait_time)
+        self.clear_caption()
+        dag.clear_all_blocks()
+
+        block_g, block_a, block_b, block_c, block_d, block_e = dag.create_blocks_from_list_instant([
+            ("Gen", None, "G"),
+            ("b1", ["Gen"], "A"),
+            ("b2", ["b1"], "B"),
+            ("b2a", ["b1"], "C"),
+            ("b3", ["b2", "b2a"], "D"),
+            ("b4", ["b3"], "E"),
+        ])
+
+        self.wait(wait_time)
+        self.caption("A BlockDAG has one more relationship to define.")
+        self.wait(wait_time)
+        self.caption("A BlockDAG has Past relationships.")
+        dag.highlight_past(block_b)
+        self.wait(wait_time)
+        self.caption("The Past of Block B includes G and A.")
+        self.wait(wait_time)
+        self.caption("A BlockDAG has Future relationships.")
+        dag.highlight_future(block_b)
+        self.wait(wait_time)
+        self.caption("The Future of Block B includes D and E.")
+        self.wait(wait_time)
+        dag.reset_highlighting()
+        self.caption("Block C is not in the Past or Future of Block B.")
+        self.wait(wait_time)
+        self.caption("This relationship is Anticone.")
+        self.wait(wait_time)
+        self.caption("Block C is in the Anticone of Block B.")
+        dag.fade_except_anticone(block_c)
+        self.play(block_c.animate.set_stroke_color(YELLOW))
+        self.wait(wait_time)
+        self.caption("Block B is in the Anticone of Block C.")
+        self.play(block_c.animate.reset_stroke_color(),
+                  block_b.animate.set_stroke_color(YELLOW))
+        self.wait(wait_time)
+        self.caption("Block C and Block B are Anticone each other.")
+        self.play(block_c.animate.set_stroke_color(YELLOW))
+        self.wait(wait_time)
+        self.caption("Block B and Block C are in each other's Anticone.")
+
+        self.wait(8.0)
+
+
+
 class FinalityDepth(HUD2DScene):
     """Explainer for Finality Depth."""
 

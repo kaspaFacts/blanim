@@ -307,6 +307,62 @@ class KaspaDAG:
         if blocks_to_fade:
             self.fade_blocks(blocks_to_fade)
 
+    def fade_except_future(self, focused_block: KaspaLogicalBlock | str) -> None:
+        """Fade all blocks except the focused block and its future cone.
+
+        Args:
+            focused_block: Block name or KaspaLogicalBlock instance to keep visible
+        """
+        # Handle both string names and block references
+        if isinstance(focused_block, str):
+            target_block = self.get_block(focused_block)
+            if target_block is None:
+                return
+        else:
+            target_block = focused_block
+
+        # Get the future cone (blocks to keep visible)
+        future_blocks = set(target_block.get_future_cone())
+        future_blocks.add(target_block)  # Include the focused block itself
+
+        # Find blocks to fade (everything not in future cone)
+        blocks_to_fade = [
+            block for block in self.all_blocks
+            if block not in future_blocks
+        ]
+
+        # Use the existing fade function with deduplication
+        if blocks_to_fade:
+            self.fade_blocks(blocks_to_fade)
+
+    def fade_except_anticone(self, focused_block: KaspaLogicalBlock | str) -> None:
+        """Fade all blocks except the focused block and its anticone.
+
+        Args:
+            focused_block: Block name or KaspaLogicalBlock instance to keep visible
+        """
+        # Handle both string names and block references
+        if isinstance(focused_block, str):
+            target_block = self.get_block(focused_block)
+            if target_block is None:
+                return
+        else:
+            target_block = focused_block
+
+        # Get the anticone (blocks to keep visible)
+        anticone_blocks = set(target_block.get_anticone())
+        anticone_blocks.add(target_block)  # Include the focused block itself
+
+        # Find blocks to fade (everything not in future cone)
+        blocks_to_fade = [
+            block for block in self.all_blocks
+            if block not in anticone_blocks
+        ]
+
+        # Use the existing fade function with deduplication
+        if blocks_to_fade:
+            self.fade_blocks(blocks_to_fade)
+
     ########################################
     # Highlighting GHOSTDAG
     ########################################
@@ -539,7 +595,7 @@ class KaspaDAG:
                         line.animate.set_stroke(opacity=self.config.fade_opacity)
                     )
 
-                    # Handle lines for parent chain blocks - fade all except selected parent (index 0)
+        # Handle lines for parent chain blocks - fade all except selected parent (index 0)
         for block in parent_chain:
             for i, line in enumerate(block.visual_block.parent_lines):
                 if i == 0:
@@ -556,7 +612,7 @@ class KaspaDAG:
         if fade_animations:
             self.scene.play(*fade_animations)
 
-            # Calculate scroll to genesis position (x-axis only)
+        # Calculate scroll to genesis position (x-axis only)
         if parent_chain:
             genesis_block = parent_chain[-1]  # Genesis is last in the chain
             genesis_pos = genesis_block.get_center()
@@ -1173,7 +1229,7 @@ class KaspaDAG:
 
         # Warn user about invalid block names
         if invalid_names:
-            logger.warning(f"Blocks not found during kaspaDAG.fade_out_blocks() and will be ignored: {invalid_names}")
+            logger.warning(f"Blocks not found during KaspaDAG.fade_blocks() and will be ignored: {invalid_names}")
 
         # Step 2: Set intended state on all blocks being faded
         for block in resolved_blocks:
@@ -1245,7 +1301,7 @@ class KaspaDAG:
 
         # Warn user about invalid block names
         if invalid_names:
-            logger.warning(f"Blocks not found during kaspaDAG.unfade_blocks() and will be ignored: {invalid_names}")
+            logger.warning(f"Blocks not found during KaspaDAG.unfade_blocks() and will be ignored: {invalid_names}")
 
         # Step 2: Set intended state on all blocks being unfaded
         for block in resolved_blocks:
@@ -2072,16 +2128,16 @@ class RelationshipHighlighter:
         for block in self.dag.all_blocks:
             if block not in context_set and block != focused_block:
                 # Fade the block itself
-                fade_animations.extend(block.visual_block.create_fade_animation())
+                fade_animations.extend(block.visual_block.create_fade_animation()) # TODO change to use unified visual api
 
                 # Selectively fade lines NOT in lines_to_keep
                 for parent_line in block.visual_block.parent_lines:
                     if id(parent_line) not in lines_to_keep:
                         fade_animations.append(
-                            parent_line.animate.set_stroke(opacity=self.dag.config.fade_opacity)
+                            parent_line.animate.set_stroke(opacity=self.dag.config.fade_opacity) # TODO create unified ParentLine visual api
                         )
 
-        # Fade focused block's parent lines if parents not in context
+        # Fade focused block's parent lines if parents not in context # TODO can this be updated
         if focused_block.visual_block.parent_lines:
             for parent_line, parent in zip(focused_block.visual_block.parent_lines, focused_block.parents):
                 if parent not in context_set:

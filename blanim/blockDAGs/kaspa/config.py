@@ -9,9 +9,6 @@ from ...core.base_visual_block import validate_protocol_attributes
 
 __all__ = ["DEFAULT_KASPA_CONFIG", "KaspaConfig", "_KaspaConfigInternal"]
 
-#TODO finish refactoring kaspa to use this consistently
-#TODO ensure parameters are identical in both
-
 # Public TypedDict for user type hints
 class KaspaConfig(TypedDict, total=False):
     """Typed configuration for Kaspa blockDAG visualization."""
@@ -161,12 +158,12 @@ class _KaspaConfigInternal:
     # Context Block is the block we show relationships of during highlighting
     context_block_color: ParsableManimColor = YELLOW # Color of pulsing stroke
     context_block_cycle_time: float = 2.0  # Seconds per complete pulse cycle
-    context_block_stroke_width: float = 8
+    context_block_stroke_width: float = 3
 
     # Highlight blocks with relationships to the Context Block
     highlight_block_color: ParsableManimColor = YELLOW
     highlight_line_color = YELLOW
-    highlight_stroke_width: float = 8
+    highlight_stroke_width: float = 3
 
     fade_opacity: float = 0.2 # Opacity to fade unrelated blocks(and lines) to during a highlight animation
 
