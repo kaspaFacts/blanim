@@ -409,7 +409,7 @@ class KaspaVisualBlock(BaseVisualBlock):
             width=self.kaspa_config.highlight_stroke_width
         )
 
-    def reset_block_stroke(self):#TODO probably remove this and use create_reset_animation, if no use for partial resets are found
+    def reset_block_stroke(self):
         """Reset Block Stroke to config default"""
         return self.square.animate.set_stroke(
             color=self.kaspa_config.stroke_color,

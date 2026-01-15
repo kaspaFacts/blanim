@@ -612,14 +612,14 @@ class PastFutureAnticone(HUD2DScene):
         wait_time = 5
 
         dag = KaspaDAG(scene=self)
-        dag.set_k(18)
-        dag.config.genesis_x = -4 # TODO how do we prevent this from being set AFTER a gen block is added/created
+        dag.config.k = 18
+        dag.config.genesis_x = -4
 
         self.wait(1)
         self.narrate("Kaspa DAG Relationships")
 
         block_g, block_a, block_b, block_c, block_d = dag.create_blocks_from_list_instant([
-            ("Gen", None, "G"),
+            ("Gen", None, "GENES"),
             ("b1", ["Gen"], "A"),
             ("b2", ["b1"], "B"),
             ("b3", ["b2"], "C"),

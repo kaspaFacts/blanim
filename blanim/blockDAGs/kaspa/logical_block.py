@@ -663,7 +663,6 @@ class BlockAnimationBuilder(AnimationGroup):
             self.block.visual_block.change_label(self.block.visual_block.creation_block_label)
         return self
 
-    # TODO unsure if this works with transform method required for label handling
     def set_label_color(self, color: ParsableManimColor) -> 'BlockAnimationBuilder':
         """Set label color."""
         if self.block.visual_block.label not in self._animations_by_mobject:

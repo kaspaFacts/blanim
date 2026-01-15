@@ -182,6 +182,49 @@ class _KaspaConfigInternal:
     horizontal_spacing: float = 2.0
     vertical_spacing: float = 1.0  # For parallel blocks during forks
 
+    # ========================================
+    #
+    # ========================================
+
+    @classmethod
+    def get_critical_params(cls) -> set[str]:
+        """Return set of parameters that become immutable after genesis."""
+        return {'k', 'genesis_x', 'genesis_y', 'horizontal_spacing', 'vertical_spacing'}
+
+    _is_locked: bool = False  # Add lock state
+
+    def __setattr__(self, name, value):
+        # Protect the lock itself from external modification
+        if name == '_is_locked' and hasattr(self, '_is_locked'):
+            # Only allow internal systems to change the lock
+            # Check if we're in an internal context (stack frame inspection)
+            import inspect
+            frame = inspect.currentframe()
+            caller_frame = frame.f_back
+            caller_filename = caller_frame.f_code.co_filename
+
+            # Allow changes only from internal DAG/block files
+            allowed_paths = ['blanim/blockDAGs/kaspa/dag.py', 'blanim/blockDAGs/kaspa/logical_block.py']
+            if not any(path in caller_filename for path in allowed_paths):
+                logger.warning("Cannot modify lock state externally.")
+                return
+
+                # Existing critical parameter protection
+        critical_params = self.get_critical_params()
+
+        if (name in critical_params and
+                hasattr(self, '_is_locked') and
+                self._is_locked and
+                hasattr(self, name) and
+                getattr(self, name) != value):
+            logger.warning(
+                f"Cannot change {name} after blocks have been added. "
+                "DAG parameters must remain consistent throughout the DAG lifecycle."
+            )
+            return
+
+        super().__setattr__(name, value)
+
     #TODO ensure all opacity changes are validated, ensure all spacings are positive, throw a logger warning for "valid but nonsense" things like setting genesis_y to 100
     def __post_init__(self):
         """Validate and auto-correct values with warnings."""
@@ -237,7 +280,10 @@ def validate_typeddict_completeness() -> None:
     dataclass_fields = _get_dataclass_fields(_KaspaConfigInternal)
     typeddict_fields = _get_typeddict_fields(KaspaConfig)
 
-    missing_fields = dataclass_fields - typeddict_fields
+    # Exclude private fields (starting with underscore) from validation
+    public_dataclass_fields = {f for f in dataclass_fields if not f.startswith('_')}
+
+    missing_fields = public_dataclass_fields - typeddict_fields
     if missing_fields:
         raise AttributeError(
             f"KaspaConfig TypedDict missing {len(missing_fields)} fields from _KaspaConfigInternal: "

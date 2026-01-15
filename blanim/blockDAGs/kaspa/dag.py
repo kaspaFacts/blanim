@@ -162,11 +162,6 @@ class KaspaDAG:
         """Access config through manager."""
         return self.config_manager.config
 
-    def set_k(self, k: int) -> 'KaspaDAG':
-        """Set k with genesis lock protection."""
-        self.config_manager.set_k(k, len(self.all_blocks) > 0) # If any blocks exist, k cannot be changed
-        return self
-
     def apply_config(self, user_config: KaspaConfig) -> 'KaspaDAG':
         """Apply typed configuration with chaining."""
         self.config_manager.apply_config(user_config, len(self.all_blocks) > 0)
@@ -1396,7 +1391,7 @@ class KaspaConfigManager:
 
     def apply_config(self, user_config: KaspaConfig, is_locked: bool = False) -> None:
         """Apply typed config with genesis lock protection."""
-        critical_params = {'k'}
+        critical_params = self.config.get_critical_params()
 
         for key, value in user_config.items():
             if key in critical_params and is_locked:
@@ -1410,20 +1405,6 @@ class KaspaConfigManager:
                 setattr(self.config, key, value)
                 if hasattr(self.config, '__post_init__'):
                     self.config.__post_init__()
-
-    def set_k(self, k: int, is_locked: bool = False) -> None:
-        """Set k with lock protection."""
-        if is_locked:
-            logger.warning(
-                "Cannot change k after blocks have been added. "
-                "DAG parameters must remain consistent throughout the DAG lifecycle."
-            )
-            return
-        self.config.k = k
-        if hasattr(self.config, '__post_init__'):
-            self.config.__post_init__()
-
-    #Complete
 
 class BlockPlaceholder:
     """Placeholder for a block that will be created later."""
