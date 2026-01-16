@@ -194,22 +194,8 @@ class _KaspaConfigInternal:
     _is_locked: bool = False  # Add lock state
 
     def __setattr__(self, name, value):
-        # Protect the lock itself from external modification
-        if name == '_is_locked' and hasattr(self, '_is_locked'):
-            # Only allow internal systems to change the lock
-            # Check if we're in an internal context (stack frame inspection)
-            import inspect
-            frame = inspect.currentframe()
-            caller_frame = frame.f_back
-            caller_filename = caller_frame.f_code.co_filename
 
-            # Allow changes only from internal DAG/block files
-            allowed_paths = ['blanim/blockDAGs/kaspa/dag.py', 'blanim/blockDAGs/kaspa/logical_block.py']
-            if not any(path in caller_filename for path in allowed_paths):
-                logger.warning("Cannot modify lock state externally.")
-                return
-
-                # Existing critical parameter protection
+        # Existing critical parameter protection
         critical_params = self.get_critical_params()
 
         if (name in critical_params and

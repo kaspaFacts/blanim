@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, Any
 
 import numpy as np
 from manim import AnimationGroup, Create, BackgroundRectangle, ShowPassingFlash, cycle_animation, Animation, \
-    UpdateFromAlphaFunc, RED
+    UpdateFromAlphaFunc
 
 from ... import BaseVisualBlock, ParentLine
 
@@ -414,12 +414,6 @@ class KaspaVisualBlock(BaseVisualBlock):
         return self.square.animate.set_stroke(
             color=self.kaspa_config.stroke_color,
             width=self.kaspa_config.stroke_width
-        )
-
-    def highlight_stroke_red(self):
-        return self.square.animate.set_stroke(
-            color = RED,
-            width=self.kaspa_config.highlight_stroke_width
         )
 
     def create_pulsing_highlight(self, color=None, min_width=None, max_width=None) -> Callable:

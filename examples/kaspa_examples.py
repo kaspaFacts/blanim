@@ -2,9 +2,9 @@
 
 from blanim import *
 
-    ####################
-    # Some examples NOT using anything but hud_2d_scene
-    ####################
+####################
+# Some examples NOT using anything but hud_2d_scene
+####################
 
 class BlockComparisonScene(HUD2DScene):
     def __init__(self):
@@ -605,6 +605,11 @@ def test_theme() -> KaspaConfig:
         "vertical_spacing": 1.5,
     }
 
+
+####################
+# Examples
+####################
+
 class PastFutureAnticone(HUD2DScene):
     """Explainer for Dag Relationships."""
 
@@ -687,7 +692,6 @@ class PastFutureAnticone(HUD2DScene):
         self.caption("Block B and Block C are in each other's Anticone.")
 
         self.wait(8.0)
-
 
 
 class FinalityDepth(HUD2DScene):
@@ -773,7 +777,7 @@ class MergeDepthBound(HUD2DScene):
         wait_time = 5
 
         dag = KaspaDAG(scene=self)
-        dag.set_k(2)
+        dag.config.k = 2
 
         self.wait(1)
         self.narrate("Kaspa Merge Depth Bound - Oversimplified")
@@ -930,7 +934,7 @@ class DAGvsCHAIN(HUD2DScene):
 
     def construct(self):
         dag = KaspaDAG(scene=self)
-        dag.set_k(0)
+        dag.config.k = 0
 
         self.wait(1)
         self.narrate("Kaspa BlockDAG vs BlockChain", run_time=1.0)
@@ -1018,7 +1022,7 @@ class LongestvsHeaviest(HUD2DScene):
 
     def construct(self):
         dag = KaspaDAG(scene=self)
-        dag.set_k(1)
+        dag.config.k = 1
         dag.config.other_parent_line_color = BLUE # Override other lines to be blue too, DAG behavior deviates from logical block
 
         self.wait(1)
@@ -1140,7 +1144,7 @@ class GHOSTDAGFig3Concise(HUD2DScene):
 
     def construct(self):
         dag = KaspaDAG(scene=self)
-        dag.set_k(3)
+        dag.config.k = 3
         animation_wait_time = 5.0
         animation_coloring_time = 1.0
         caption_time = 1.0

@@ -128,6 +128,7 @@ if TYPE_CHECKING:
     from ...core.hud_2d_scene import HUD2DScene
 
 class KaspaDAG:
+
     def __init__(self, scene: HUD2DScene):
         self.scene = scene
         self.config_manager = KaspaConfigManager(_KaspaConfigInternal(**DEFAULT_KASPA_CONFIG.__dict__))
@@ -610,11 +611,11 @@ class KaspaDAG:
         # Calculate scroll to genesis position (x-axis only)
         if parent_chain:
             genesis_block = parent_chain[-1]  # Genesis is last in the chain
-            genesis_pos = genesis_block.get_center()
+            genesis_pos = genesis_block.visual_block.get_center()
             camera_target = [genesis_pos[0], 0, 0]  # X-axis movement only
 
             # Calculate total distance for runtime - make it slower
-            sink_pos = parent_chain[0].get_center()
+            sink_pos = parent_chain[0].visual_block.get_center()
             total_distance = abs(sink_pos[0] - genesis_pos[0])
             total_time = total_distance * scroll_speed_factor / self.config.horizontal_spacing * 3.0  # Slower by factor of 3
 
@@ -664,11 +665,11 @@ class KaspaDAG:
             next_block = parent_chain[i + 1]
 
             # Move camera to next block position
-            next_pos = next_block.get_center()
+            next_pos = next_block.visual_block.get_center()
             camera_target = [next_pos[0], 0, 0]  # X-axis movement only
 
             # Calculate distance and time for this step
-            current_pos = current_block.get_center()
+            current_pos = current_block.visual_block.get_center()
             step_distance = abs(current_pos[0] - next_pos[0])
             step_time = step_distance * scroll_speed_factor / self.config.horizontal_spacing * 3.0
 
@@ -1383,6 +1384,7 @@ class KaspaDAG:
         # 4. Clear tracking reference
         self.virtual_block = None
 
+# TODO lock is never set yet.  Lock should be set anytime a block is added to the dag.
 class KaspaConfigManager:
     """Manages configuration for a KaspaDAG instance."""
 
@@ -1903,7 +1905,6 @@ class Movement:
         if not self.dag.all_blocks:
             return
 
-            # Use visual_block property instead of _visual #TODO confirm visual_block can be removed with delegation and override pattern used
         rightmost_x = max(block.visual_block.get_center()[0] for block in self.dag.all_blocks)
 
         margin = self.dag.config.horizontal_spacing * 2
@@ -2253,9 +2254,9 @@ class GhostDAGHighlighter:
                 return
 
         # Center camera on context block x, selected parent y
-        context_pos = context_block.get_center()
+        context_pos = context_block.visual_block.get_center()
         if context_block.selected_parent:
-            sp_pos = context_block.selected_parent.get_center()
+            sp_pos = context_block.selected_parent.visual_block.get_center()
             camera_target = (context_pos[0], sp_pos[1], 0)
         else:
             camera_target = context_pos
@@ -2438,12 +2439,12 @@ class GhostDAGHighlighter:
 
         for block in ordered_blocks:
             if block not in self._original_positions:
-                self._original_positions[block] = block.get_center()
+                self._original_positions[block] = block.visual_block.get_center()
 
                 # Calculate positions and move each block individually during indication
         block_spacing = self.dag.config.horizontal_spacing * 0.4
-        current_x = context_block.selected_parent.get_center()[0] if context_block.selected_parent else 0
-        y_position = context_block.selected_parent.get_center()[1] if context_block.selected_parent else 0
+        current_x = context_block.selected_parent.visual_block.get_center()[0] if context_block.selected_parent else 0
+        y_position = context_block.selected_parent.visual_block.get_center()[1] if context_block.selected_parent else 0
 
         for i, block in enumerate(ordered_blocks):
             # Indicate the block first
@@ -2455,7 +2456,7 @@ class GhostDAGHighlighter:
             # Calculate target position for this block
             if i == 0 and context_block.selected_parent and block == context_block.selected_parent:
                 # Selected parent stays in place
-                target_pos = block.get_center()
+                target_pos = block.visual_block.get_center()
             else:
                 # FIXED: Always increment x-position for blocks after selected parent
                 current_x += block_spacing

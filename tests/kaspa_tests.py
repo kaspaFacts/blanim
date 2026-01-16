@@ -614,7 +614,7 @@ class TestCameraFollowing(HUD2DScene):
             current = dag.add_block(parents=[current])
             self.wait(0.3)
 
-        text = Text("Camera Following Test Passed", color=GREEN).to_edge(UP)
+        text = Text("Camera Following Test Passed", color=GREEN).to_edge(UP) # NOTE: this places words on scene, NOT in hud
         self.play(Write(text))
         self.wait(2)
 
