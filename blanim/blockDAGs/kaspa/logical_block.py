@@ -479,6 +479,9 @@ class KaspaLogicalBlock:
     # Accessing Visual Block
     ########################################
 
+    def get_center(self):
+        return self.visual_block.get_center()
+
     @property
     def visual_block(self) -> KaspaVisualBlock:
         """

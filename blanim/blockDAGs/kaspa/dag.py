@@ -269,7 +269,7 @@ class KaspaDAG:
                 target_block = block
 
             # Create highlight animation for this block
-            highlight_animations.append(target_block.create_highlight_animation())
+            highlight_animations.append(target_block.visual_block.create_highlight_animation())
 
         # Play all highlight animations together
         if highlight_animations:
@@ -1307,7 +1307,7 @@ class KaspaDAG:
         all_animations = []
         for block in resolved_blocks:
             # Add block unfade animations
-            all_animations.extend(block.create_unfade_animation())
+            all_animations.extend(block.visual_block.create_unfade_animation())
 
             # Add parent line unfade animations (only if parent is also unfaded)
             for i, line in enumerate(block.visual_block.parent_lines):
@@ -1321,7 +1321,7 @@ class KaspaDAG:
             for logical_child in block.children:
                 if not logical_child.visual_block.is_faded:
                     for line in logical_child.visual_block.parent_lines:
-                        if line.parent_block == block.square:
+                        if line.parent_block == block.visual_block: # was block.visual_block.square
                             all_animations.append(
                                 line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
                             )
