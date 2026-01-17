@@ -1246,7 +1246,7 @@ class Frame2DWrapper:
 
 
 class Frame2DAnimateWrapper(AnimationGroup):
-    """Animation builder that extends AnimationGroup for type compatibility."""
+    """Animation builder that extends AnimationGroup for type compatibility. """
 
     def __init__(self, frame_wrapper: Frame2DWrapper):
         super().__init__()
