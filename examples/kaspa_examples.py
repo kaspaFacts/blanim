@@ -588,13 +588,8 @@ class BlockComparisonScene(HUD2DScene):
 
         self.wait(3)
 
-    ####################
-    # Kaspa Specific Examples
-    ####################
-
-
 ####################
-# Examples
+# Kaspa Specific Examples
 ####################
 
 def test_theme() -> KaspaConfig:
