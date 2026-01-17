@@ -9,9 +9,6 @@ from ...core.base_visual_block import validate_protocol_attributes
 
 __all__ = ["DEFAULT_KASPA_CONFIG", "KaspaConfig", "_KaspaConfigInternal"]
 
-#TODO finish refactoring kaspa to use this consistently
-#TODO ensure parameters are identical in both
-
 # Public TypedDict for user type hints
 class KaspaConfig(TypedDict, total=False):
     """Typed configuration for Kaspa blockDAG visualization."""
@@ -161,12 +158,12 @@ class _KaspaConfigInternal:
     # Context Block is the block we show relationships of during highlighting
     context_block_color: ParsableManimColor = YELLOW # Color of pulsing stroke
     context_block_cycle_time: float = 2.0  # Seconds per complete pulse cycle
-    context_block_stroke_width: float = 8
+    context_block_stroke_width: float = 3
 
     # Highlight blocks with relationships to the Context Block
     highlight_block_color: ParsableManimColor = YELLOW
     highlight_line_color = YELLOW
-    highlight_stroke_width: float = 8
+    highlight_stroke_width: float = 3
 
     fade_opacity: float = 0.2 # Opacity to fade unrelated blocks(and lines) to during a highlight animation
 
@@ -184,6 +181,47 @@ class _KaspaConfigInternal:
     # ========================================
     horizontal_spacing: float = 2.0
     vertical_spacing: float = 1.0  # For parallel blocks during forks
+
+    # ========================================
+    #
+    # ========================================
+
+    @classmethod
+    def get_critical_params(cls) -> set[str]:
+        """Return set of parameters that become immutable after genesis."""
+        return {'k', 'genesis_x', 'genesis_y', 'horizontal_spacing', 'vertical_spacing'}
+
+    _is_locked: bool = False  # Add lock state
+
+    def __setattr__(self, name, value):
+
+        # Existing critical parameter protection
+        critical_params = self.get_critical_params()
+
+        if (name in critical_params and
+                hasattr(self, '_is_locked') and
+                self._is_locked and
+                hasattr(self, name) and
+                getattr(self, name) != value):
+            logger.warning(
+                f"Cannot change {name} after blocks have been added. "
+                "DAG parameters must remain consistent throughout the DAG lifecycle."
+            )
+            return
+
+        # NEW: Add value validation for all assignments
+        if name == 'k' and value < 0:
+            logger.warning("k must be >= 0, auto-correcting to 0")
+            value = 0
+        elif name in ['fill_opacity', 'stroke_opacity'] and value <= 0:
+            logger.warning(f"{name} must be > 0, auto-correcting to 0.01")
+            value = 0.01
+        elif name in ['fill_opacity', 'stroke_opacity'] and value > 1.0:
+            logger.warning(f"{name} must be <= 1.0, auto-correcting to 1.0")
+            value = 1.0
+            # Add more validations as needed...
+
+        super().__setattr__(name, value)
 
     #TODO ensure all opacity changes are validated, ensure all spacings are positive, throw a logger warning for "valid but nonsense" things like setting genesis_y to 100
     def __post_init__(self):
@@ -217,9 +255,9 @@ class _KaspaConfigInternal:
             logger.warning("fade_opacity must be <= 1.0, auto-correcting to 1.0")
             self.fade_opacity = 1.0
 
-            # Auto-correct other critical values
+        # Auto-correct other critical values
         if self.stroke_width < 1:
-            logger.warning("stroke_width must be >= 1, auto-correcting to 0")
+            logger.warning("stroke_width must be >= 1, auto-correcting to 1")
             self.stroke_width = 1
 
         if self.k < 0:
@@ -240,7 +278,10 @@ def validate_typeddict_completeness() -> None:
     dataclass_fields = _get_dataclass_fields(_KaspaConfigInternal)
     typeddict_fields = _get_typeddict_fields(KaspaConfig)
 
-    missing_fields = dataclass_fields - typeddict_fields
+    # Exclude private fields (starting with underscore) from validation
+    public_dataclass_fields = {f for f in dataclass_fields if not f.startswith('_')}
+
+    missing_fields = public_dataclass_fields - typeddict_fields
     if missing_fields:
         raise AttributeError(
             f"KaspaConfig TypedDict missing {len(missing_fields)} fields from _KaspaConfigInternal: "
@@ -250,6 +291,108 @@ def validate_typeddict_completeness() -> None:
 # Default configuration instance
 DEFAULT_KASPA_CONFIG = _KaspaConfigInternal()
 
+"""
+Runtime Parameter Validation Strategies for _KaspaConfigInternal  
+===============================================================  
+  
+PROBLEM:  
+--------  
+Current validation only occurs during object initialization in __post_init__().  
+Direct property assignments after initialization bypass validation:  
+    dag.config.k = -1  # Currently accepted without correction  
+  
+SOLUTIONS:  
+---------  
+  
+1. EXTEND __setattr__ WITH VALIDATION (Current Implementation)  
+   - Adds validation logic to existing __setattr__ method  
+   - Validates values on every assignment  
+   - Auto-corrects invalid values with logger warnings  
+     
+   BEST FOR:  
+   - Simple, straightforward validation  
+   - Maintaining existing architecture  
+   - Quick implementation with minimal refactoring  
+     
+   TRADE-OFFS:  
+   - Duplicates validation logic between __setattr__ and __post_init__  
+   - __setattr__ becomes complex as more validations are added  
+  
+2. PROPERTY DESCRIPTORS  
+   - Create descriptor classes for validated parameters  
+   - Encapsulates validation logic per parameter  
+   - Eliminates validation logic from __setattr__  
+     
+   EXAMPLE:  
+   # python  
+   class ValidatedInt:  
+       def __set__(self, obj, value):  
+           if value < 0:  
+               logger.warning("Value must be >= 0, auto-correcting to 0")  
+               value = 0  
+           obj._value = value  
+     
+   k: int = ValidatedInt(default=18, min_val=0)  
+     
+   BEST FOR:  
+   - Complex validation rules per parameter  
+   - Reusable validation across multiple config classes  
+   - Clean separation of concerns  
+     
+   TRADE-OFFS:  
+   - More complex initial setup  
+   - Requires refactoring all parameter definitions  
+   - Less intuitive for simple validations  
+  
+3. CENTRALIZED VALIDATION FUNCTION  
+   - Extract validation logic into reusable function  
+   - Called from both __setattr__ and __post_init__  
+   - Eliminates code duplication  
+     
+   EXAMPLE:  
+   # python  
+   def _validate_parameter(name: str, value):  
+       validations = {  
+           'k': (lambda v: v >= 0, 0, "k must be >= 0"),  
+           'fill_opacity': (lambda v: 0 < v <= 1.0, 0.01, "opacity must be > 0 and <= 1.0"),  
+       }  
+       if name in validations:  
+           is_valid, default, message = validations[name]  
+           if not is_valid(value):  
+               logger.warning(f"{message}, auto-correcting to {default}")  
+               return default  
+       return value  
+     
+   BEST FOR:  
+   - Avoiding code duplication  
+   - Consistent validation across initialization and runtime  
+   - Easy to add new validations  
+     
+   TRADE-OFFS:  
+   - Still requires calling from multiple places  
+   - Validation dictionary must be maintained  
+  
+RECOMMENDATION:  
+---------------  
+For the current use case, Option 1 (extend __setattr__) is recommended because:  
+- It's the simplest to implement  
+- Maintains compatibility with existing genesis lock mechanism  
+- Validation rules are straightforward (range checks)  
+- Can be easily refactored to Option 3 later if needed  
+  
+FUTURE ENHANCEMENTS:  
+--------------------  
+- Add validation for all opacity parameters (ghostdag_*_opacity)  
+- Add validation for spacing parameters (must be positive)  
+- Add warnings for "valid but nonsense" values (e.g., genesis_y = 100)  
+- Consider migrating to Option 3 to eliminate duplication  
+  
+RELATED:  
+--------  
+- Genesis lock mechanism in __setattr__ prevents changes to critical params after blocks exist  
+- __post_init__ provides the foundation validation logic  
+- TODO at line 188 confirms intention to enhance validation [1](#4-0)  
+"""
 
 """
 ################################################################################  

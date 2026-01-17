@@ -128,6 +128,7 @@ if TYPE_CHECKING:
     from ...core.hud_2d_scene import HUD2DScene
 
 class KaspaDAG:
+
     def __init__(self, scene: HUD2DScene):
         self.scene = scene
         self.config_manager = KaspaConfigManager(_KaspaConfigInternal(**DEFAULT_KASPA_CONFIG.__dict__))
@@ -161,11 +162,6 @@ class KaspaDAG:
     def config(self) -> _KaspaConfigInternal:
         """Access config through manager."""
         return self.config_manager.config
-
-    def set_k(self, k: int) -> 'KaspaDAG':
-        """Set k with genesis lock protection."""
-        self.config_manager.set_k(k, len(self.all_blocks) > 0) # If any blocks exist, k cannot be changed
-        return self
 
     def apply_config(self, user_config: KaspaConfig) -> 'KaspaDAG':
         """Apply typed configuration with chaining."""
@@ -273,7 +269,7 @@ class KaspaDAG:
                 target_block = block
 
             # Create highlight animation for this block
-            highlight_animations.append(target_block.create_highlight_animation())
+            highlight_animations.append(target_block.visual_block.create_highlight_animation())
 
         # Play all highlight animations together
         if highlight_animations:
@@ -301,6 +297,62 @@ class KaspaDAG:
         blocks_to_fade = [
             block for block in self.all_blocks
             if block not in past_blocks
+        ]
+
+        # Use the existing fade function with deduplication
+        if blocks_to_fade:
+            self.fade_blocks(blocks_to_fade)
+
+    def fade_except_future(self, focused_block: KaspaLogicalBlock | str) -> None:
+        """Fade all blocks except the focused block and its future cone.
+
+        Args:
+            focused_block: Block name or KaspaLogicalBlock instance to keep visible
+        """
+        # Handle both string names and block references
+        if isinstance(focused_block, str):
+            target_block = self.get_block(focused_block)
+            if target_block is None:
+                return
+        else:
+            target_block = focused_block
+
+        # Get the future cone (blocks to keep visible)
+        future_blocks = set(target_block.get_future_cone())
+        future_blocks.add(target_block)  # Include the focused block itself
+
+        # Find blocks to fade (everything not in future cone)
+        blocks_to_fade = [
+            block for block in self.all_blocks
+            if block not in future_blocks
+        ]
+
+        # Use the existing fade function with deduplication
+        if blocks_to_fade:
+            self.fade_blocks(blocks_to_fade)
+
+    def fade_except_anticone(self, focused_block: KaspaLogicalBlock | str) -> None:
+        """Fade all blocks except the focused block and its anticone.
+
+        Args:
+            focused_block: Block name or KaspaLogicalBlock instance to keep visible
+        """
+        # Handle both string names and block references
+        if isinstance(focused_block, str):
+            target_block = self.get_block(focused_block)
+            if target_block is None:
+                return
+        else:
+            target_block = focused_block
+
+        # Get the anticone (blocks to keep visible)
+        anticone_blocks = set(target_block.get_anticone())
+        anticone_blocks.add(target_block)  # Include the focused block itself
+
+        # Find blocks to fade (everything not in future cone)
+        blocks_to_fade = [
+            block for block in self.all_blocks
+            if block not in anticone_blocks
         ]
 
         # Use the existing fade function with deduplication
@@ -505,7 +557,6 @@ class KaspaDAG:
             start_block: Block to start from (defaults to sink block)
             scroll_speed_factor: Multiplier for scroll speed based on horizontal spacing
         """
-
         # Get starting block (sink if not specified)
         if start_block is None:
             start_block = self.find_sink()
@@ -540,7 +591,7 @@ class KaspaDAG:
                         line.animate.set_stroke(opacity=self.config.fade_opacity)
                     )
 
-                    # Handle lines for parent chain blocks - fade all except selected parent (index 0)
+        # Handle lines for parent chain blocks - fade all except selected parent (index 0)
         for block in parent_chain:
             for i, line in enumerate(block.visual_block.parent_lines):
                 if i == 0:
@@ -557,14 +608,14 @@ class KaspaDAG:
         if fade_animations:
             self.scene.play(*fade_animations)
 
-            # Calculate scroll to genesis position (x-axis only)
+        # Calculate scroll to genesis position (x-axis only)
         if parent_chain:
             genesis_block = parent_chain[-1]  # Genesis is last in the chain
-            genesis_pos = genesis_block.get_center()
+            genesis_pos = genesis_block.visual_block.get_center()
             camera_target = [genesis_pos[0], 0, 0]  # X-axis movement only
 
             # Calculate total distance for runtime - make it slower
-            sink_pos = parent_chain[0].get_center()
+            sink_pos = parent_chain[0].visual_block.get_center()
             total_distance = abs(sink_pos[0] - genesis_pos[0])
             total_time = total_distance * scroll_speed_factor / self.config.horizontal_spacing * 3.0  # Slower by factor of 3
 
@@ -614,11 +665,11 @@ class KaspaDAG:
             next_block = parent_chain[i + 1]
 
             # Move camera to next block position
-            next_pos = next_block.get_center()
+            next_pos = next_block.visual_block.get_center()
             camera_target = [next_pos[0], 0, 0]  # X-axis movement only
 
             # Calculate distance and time for this step
-            current_pos = current_block.get_center()
+            current_pos = current_block.visual_block.get_center()
             step_distance = abs(current_pos[0] - next_pos[0])
             step_time = step_distance * scroll_speed_factor / self.config.horizontal_spacing * 3.0
 
@@ -635,7 +686,7 @@ class KaspaDAG:
             fade_animations = []
 
             for block in self.all_blocks:
-                block_pos = block.get_center()
+                block_pos = block.visual_block.get_center()
                 # Fade if block is right of threshold AND not in parent chain
                 if block_pos[0] > fade_threshold_x and block not in parent_chain_set:
                     fade_animations.extend(block.visual_block.create_fade_animation())
@@ -1174,7 +1225,7 @@ class KaspaDAG:
 
         # Warn user about invalid block names
         if invalid_names:
-            logger.warning(f"Blocks not found during kaspaDAG.fade_out_blocks() and will be ignored: {invalid_names}")
+            logger.warning(f"Blocks not found during KaspaDAG.fade_blocks() and will be ignored: {invalid_names}")
 
         # Step 2: Set intended state on all blocks being faded
         for block in resolved_blocks:
@@ -1184,15 +1235,15 @@ class KaspaDAG:
         all_animations = []
         for block in resolved_blocks:
             # Add block fade animations
-            all_animations.extend(block.create_fade_animation())
+            all_animations.extend(block.visual_block.create_fade_animation())
 
             # Add parent line fade animations
-            all_animations.extend(block.create_parent_line_fade_animations())
+            all_animations.extend(block.visual_block.create_parent_line_fade_animations())
 
             # Add child line fade animations
             for logical_child in block.children:
-                for line in logical_child.parent_lines:
-                    if line.parent_block == block.square:
+                for line in logical_child.visual_block.parent_lines:
+                    if line.parent_block == block.visual_block.square:
                         all_animations.append(
                             line.animate.set_stroke(opacity=self.config.fade_opacity)
                         )
@@ -1246,7 +1297,7 @@ class KaspaDAG:
 
         # Warn user about invalid block names
         if invalid_names:
-            logger.warning(f"Blocks not found during kaspaDAG.unfade_blocks() and will be ignored: {invalid_names}")
+            logger.warning(f"Blocks not found during KaspaDAG.unfade_blocks() and will be ignored: {invalid_names}")
 
         # Step 2: Set intended state on all blocks being unfaded
         for block in resolved_blocks:
@@ -1256,7 +1307,7 @@ class KaspaDAG:
         all_animations = []
         for block in resolved_blocks:
             # Add block unfade animations
-            all_animations.extend(block.create_unfade_animation())
+            all_animations.extend(block.visual_block.create_unfade_animation())
 
             # Add parent line unfade animations (only if parent is also unfaded)
             for i, line in enumerate(block.visual_block.parent_lines):
@@ -1270,7 +1321,7 @@ class KaspaDAG:
             for logical_child in block.children:
                 if not logical_child.visual_block.is_faded:
                     for line in logical_child.visual_block.parent_lines:
-                        if line.parent_block == block.square:
+                        if line.parent_block == block.visual_block: # was block.visual_block.square
                             all_animations.append(
                                 line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
                             )
@@ -1333,6 +1384,7 @@ class KaspaDAG:
         # 4. Clear tracking reference
         self.virtual_block = None
 
+# TODO lock is never set yet.  Lock should be set anytime a block is added to the dag.
 class KaspaConfigManager:
     """Manages configuration for a KaspaDAG instance."""
 
@@ -1341,7 +1393,7 @@ class KaspaConfigManager:
 
     def apply_config(self, user_config: KaspaConfig, is_locked: bool = False) -> None:
         """Apply typed config with genesis lock protection."""
-        critical_params = {'k'}
+        critical_params = self.config.get_critical_params()
 
         for key, value in user_config.items():
             if key in critical_params and is_locked:
@@ -1355,20 +1407,6 @@ class KaspaConfigManager:
                 setattr(self.config, key, value)
                 if hasattr(self.config, '__post_init__'):
                     self.config.__post_init__()
-
-    def set_k(self, k: int, is_locked: bool = False) -> None:
-        """Set k with lock protection."""
-        if is_locked:
-            logger.warning(
-                "Cannot change k after blocks have been added. "
-                "DAG parameters must remain consistent throughout the DAG lifecycle."
-            )
-            return
-        self.config.k = k
-        if hasattr(self.config, '__post_init__'):
-            self.config.__post_init__()
-
-    #Complete
 
 class BlockPlaceholder:
     """Placeholder for a block that will be created later."""
@@ -1387,6 +1425,7 @@ class BlockPlaceholder:
         return getattr(self.actual_block, attr)
 
 # TODO modify so camera movement is part of same animation as create and move
+# TODO modify this so it does NOT create blocks, and then move positioning to movement?
 class BlockManager:
     """Handles block creation, queuing, and workflow management."""
 
@@ -1492,7 +1531,7 @@ class BlockManager:
 
         return placeholder
 
-# TODO change this, see TODOs within
+#TODO change this, see TODOs within
     def add_block(self, parents=None, name=None) -> KaspaLogicalBlock:
         """Create and animate a block immediately."""
         placeholder = self.queue_block(parents=parents, name=name, timestamp=0)
@@ -1553,11 +1592,20 @@ class BlockManager:
         if not parents:
             return self.dag.config.genesis_x, self.dag.config.genesis_y
 
+        x_position = self._calculate_x_position(parents)
+        y_position = self._calculate_y_position(x_position)
+        return x_position, y_position
+
+    def _calculate_x_position(self, parents: List[KaspaLogicalBlock]) -> float:
+        """Calculate x-position based on rightmost parent."""
         # Use rightmost parent for x-position
         rightmost_parent = max(parents, key=lambda p: p.visual_block.square.get_center()[0])
         parent_pos = rightmost_parent.visual_block.square.get_center()
         x_position = parent_pos[0] + self.dag.config.horizontal_spacing
+        return x_position
 
+    def _calculate_y_position(self, x_position: float) -> float:
+        """Calculate y-position based on blocks at same x-position."""
         # Find blocks at same x-position
         same_x_blocks = [
             b for b in self.dag.all_blocks
@@ -1566,13 +1614,11 @@ class BlockManager:
 
         if not same_x_blocks:
             # First block at this x - use gen_y y
-            y_position = self.dag.config.genesis_y
+            return self.dag.config.genesis_y
         else:
             # Stack above topmost neighbor
             topmost_y = max(b.visual_block.get_center()[1] for b in same_x_blocks)
-            y_position = topmost_y + self.dag.config.vertical_spacing
-
-        return x_position, y_position
+            return topmost_y + self.dag.config.vertical_spacing
 
     def animate_dag_repositioning(self, x_positions: Set[float]):
         """Center columns of blocks around genesis y-position."""
@@ -1859,7 +1905,6 @@ class Movement:
         if not self.dag.all_blocks:
             return
 
-            # Use visual_block property instead of _visual #TODO confirm visual_block can be removed with delegation and override pattern used
         rightmost_x = max(block.visual_block.get_center()[0] for block in self.dag.all_blocks)
 
         margin = self.dag.config.horizontal_spacing * 2
@@ -2065,16 +2110,16 @@ class RelationshipHighlighter:
         for block in self.dag.all_blocks:
             if block not in context_set and block != focused_block:
                 # Fade the block itself
-                fade_animations.extend(block.visual_block.create_fade_animation())
+                fade_animations.extend(block.visual_block.create_fade_animation()) # TODO change to use unified visual api
 
                 # Selectively fade lines NOT in lines_to_keep
                 for parent_line in block.visual_block.parent_lines:
                     if id(parent_line) not in lines_to_keep:
                         fade_animations.append(
-                            parent_line.animate.set_stroke(opacity=self.dag.config.fade_opacity)
+                            parent_line.animate.set_stroke(opacity=self.dag.config.fade_opacity) # TODO create unified ParentLine visual api
                         )
 
-        # Fade focused block's parent lines if parents not in context
+        # Fade focused block's parent lines if parents not in context # TODO can this be updated
         if focused_block.visual_block.parent_lines:
             for parent_line, parent in zip(focused_block.visual_block.parent_lines, focused_block.parents):
                 if parent not in context_set:
@@ -2209,9 +2254,9 @@ class GhostDAGHighlighter:
                 return
 
         # Center camera on context block x, selected parent y
-        context_pos = context_block.get_center()
+        context_pos = context_block.visual_block.get_center()
         if context_block.selected_parent:
-            sp_pos = context_block.selected_parent.get_center()
+            sp_pos = context_block.selected_parent.visual_block.get_center()
             camera_target = (context_pos[0], sp_pos[1], 0)
         else:
             camera_target = context_pos
@@ -2394,12 +2439,12 @@ class GhostDAGHighlighter:
 
         for block in ordered_blocks:
             if block not in self._original_positions:
-                self._original_positions[block] = block.get_center()
+                self._original_positions[block] = block.visual_block.get_center()
 
                 # Calculate positions and move each block individually during indication
         block_spacing = self.dag.config.horizontal_spacing * 0.4
-        current_x = context_block.selected_parent.get_center()[0] if context_block.selected_parent else 0
-        y_position = context_block.selected_parent.get_center()[1] if context_block.selected_parent else 0
+        current_x = context_block.selected_parent.visual_block.get_center()[0] if context_block.selected_parent else 0
+        y_position = context_block.selected_parent.visual_block.get_center()[1] if context_block.selected_parent else 0
 
         for i, block in enumerate(ordered_blocks):
             # Indicate the block first
@@ -2411,7 +2456,7 @@ class GhostDAGHighlighter:
             # Calculate target position for this block
             if i == 0 and context_block.selected_parent and block == context_block.selected_parent:
                 # Selected parent stays in place
-                target_pos = block.get_center()
+                target_pos = block.visual_block.get_center()
             else:
                 # FIXED: Always increment x-position for blocks after selected parent
                 current_x += block_spacing
@@ -2524,7 +2569,7 @@ class GhostDAGHighlighter:
 
                         # Check if this would exceed k
                         blue_count = len(affected_blue_in_anticone) + 1  # +1 for candidate
-                        if blue_count > context_block.kaspa_config.k:
+                        if blue_count > context_block.config.k:
                             second_check_failed = True
                             self.dag.scene.caption(
                                 f"Second check FAILED: {blue_block.name} would have {blue_count} $>$ k blues in anticone")
@@ -2567,7 +2612,7 @@ class GhostDAGHighlighter:
 
             # Final decision based on both checks
             can_be_blue = context_block.can_be_blue_local(
-                candidate, local_blue_status, context_block.kaspa_config.k
+                candidate, local_blue_status, context_block.config.k
             )
 
             if can_be_blue:

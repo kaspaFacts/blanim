@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, Any
 
 import numpy as np
 from manim import AnimationGroup, Create, BackgroundRectangle, ShowPassingFlash, cycle_animation, Animation, \
-    UpdateFromAlphaFunc, RED
+    UpdateFromAlphaFunc
 
 from ... import BaseVisualBlock, ParentLine
 
@@ -409,23 +409,17 @@ class KaspaVisualBlock(BaseVisualBlock):
             width=self.kaspa_config.highlight_stroke_width
         )
 
-    def reset_block_stroke(self):#TODO probably remove this and use create_reset_animation, if no use for partial resets are found
+    def reset_block_stroke(self):
         """Reset Block Stroke to config default"""
         return self.square.animate.set_stroke(
             color=self.kaspa_config.stroke_color,
             width=self.kaspa_config.stroke_width
         )
 
-    def highlight_stroke_red(self):
-        return self.square.animate.set_stroke(
-            color = RED,
-            width=self.kaspa_config.highlight_stroke_width
-        )
-
     def create_pulsing_highlight(self, color=None, min_width=None, max_width=None) -> Callable:
         """Create updater function for pulsing stroke effect using config values."""
         original_width = self.kaspa_config.stroke_width
-        highlighted_width = self.kaspa_config.context_block_stroke_width
+        highlighted_width = original_width + 3
         context_color = self.kaspa_config.context_block_color
         cycle_time = self.kaspa_config.context_block_cycle_time
 

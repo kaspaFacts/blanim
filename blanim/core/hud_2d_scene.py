@@ -9,10 +9,10 @@ __all__ = [
     # Add any other scene-related classes/functions you export
 ]
 
-from typing import Literal, Type, Union, Any, Optional
+from typing import Literal, Type, Union, Any, Optional, Iterator, cast
 
 from manim import Scene, logger, AnimationGroup, ThreeDScene, WHITE, UP, DOWN, Text, MathTex, Tex, BLACK, Mobject, \
-    DEGREES, Transform
+    DEGREES, Transform, ThreeDCamera, Animation
 
 
 #####START everything related to HUD2DScene#####
@@ -208,6 +208,7 @@ class HUD2DScene(ThreeDScene):
 
         self.narration: Optional[UniversalNarrationManager] = None # manim warns against overriding init
         self.transcript: Optional[TranscriptManager] = None # manim warns against overriding init
+        self._camera_with_frame: Optional[CameraWithFrame] = None # manim warns against overriding init
 
     def setup(self) -> None:
         """Set up the scene with 2D orthographic camera orientation.
@@ -251,8 +252,12 @@ class HUD2DScene(ThreeDScene):
         # Set camera to orthographic 2D view (looking straight down)
         self.set_camera_orientation(phi=0, theta=-90 * DEGREES)
 
-        # Create 2D frame wrapper for MovingCameraScene API compatibility
-        self.camera.frame = Frame2DWrapper(self.camera)
+        # Get the raw camera from parent with type cast
+        raw_camera = cast(ThreeDCamera, super().camera)
+
+        # Initialize typed camera wrapper
+        self._camera_with_frame = CameraWithFrame(raw_camera)
+        self._camera_with_frame.frame = Frame2DWrapper(raw_camera)
 
         # Initialize universal narration manager with dual text support
         self.narration = UniversalNarrationManager(
@@ -261,6 +266,11 @@ class HUD2DScene(ThreeDScene):
         )
 
         self.transcript = TranscriptManager(self)
+
+    @property
+    def camera(self) -> CameraWithFrame:
+        """Override to return typed camera with frame attribute."""
+        return self._camera_with_frame  # type: ignore[return-value]
 
     def tear_down(self) -> None:
         """Clean up scene resources and write transcript file.
@@ -294,61 +304,7 @@ class HUD2DScene(ThreeDScene):
             self.transcript._write_transcript()  # type: ignore[attr-defined]  # noqa: SLF001
         super().tear_down()
 
-    def play(self, *args, **kwargs) -> None:
-        """Play animations with Frame2DWrapper support.
-
-        Overrides :meth:`~.Scene.play` to handle :class:`Frame2DAnimateWrapper`
-        animations created by ``self.camera.frame.animate``. This allows using
-        MovingCameraScene-style frame animations in the 2D HUD scene.
-
-        Parameters
-        ----------
-        *args
-            Animation objects to play. Can include :class:`Frame2DAnimateWrapper`
-            instances from ``self.camera.frame.animate`` calls.
-        **kwargs
-            Additional arguments passed to :meth:`~.Scene.play`, such as
-            ``run_time``, ``rate_func``, or ``lag_ratio``
-
-        Examples
-        --------
-        .. code-block:: python
-
-            class FrameAnimationExample(HUD2DScene):
-                def construct(self):
-                    square = Square()
-                    self.add(square)
-
-                    # Frame animation is automatically handled
-                    self.play(
-                        self.camera.frame.animate.shift(RIGHT * 2),
-                        square.animate.scale(2),
-                        run_time=2
-                    )
-
-        See Also
-        --------
-        :class:`Frame2DWrapper` : Wrapper providing frame.animate API
-        :class:`Frame2DAnimateWrapper` : Animation builder for frame animations
-        :meth:`~.Scene.play` : Parent class play method
-
-        Notes
-        -----
-        - Automatically converts :class:`Frame2DAnimateWrapper` to :class:`~.AnimationGroup`
-        - All other animations are passed through unchanged
-        - This override is transparent to users
-        """
-        processed_args = []
-        for arg in args:
-            if isinstance(arg, Frame2DAnimateWrapper):
-                built = arg.build()
-                if built is not None:
-                    processed_args.append(built)
-            else:
-                processed_args.append(arg)
-        return super().play(*processed_args, **kwargs)
-
-    def narrate(self, text: str, run_time: float = 0.5, **kwargs: Any) -> None:
+    def narrate(self, text: str, run_time: float = 1.0, **kwargs: Any) -> None:
         r"""Update upper narration text with animation.
 
         Uses the primer pattern to transform the upper narration text. The primer
@@ -460,7 +416,7 @@ class HUD2DScene(ThreeDScene):
             **kwargs
         )
 
-    def caption(self, text: str, run_time: float = 0.5, **kwargs: Any) -> None:
+    def caption(self, text: str, run_time: float = 1.0, **kwargs: Any) -> None:
         r"""Update lower caption text with animation.
 
         Uses the primer pattern to transform the lower caption text. The primer
@@ -577,7 +533,7 @@ class HUD2DScene(ThreeDScene):
             **kwargs
         )
 
-    def clear_narrate(self, run_time: float = 0.5, **kwargs: Any) -> None:
+    def clear_narrate(self, run_time: float = 1.0, **kwargs: Any) -> None:
         """Clear upper narration text with animation.
 
         Transforms the narration to invisible text (BLACK color) to effectively
@@ -627,7 +583,7 @@ class HUD2DScene(ThreeDScene):
             **kwargs
         )
 
-    def clear_caption(self, run_time: float = 0.5, **kwargs: Any) -> None:
+    def clear_caption(self, run_time: float = 1.0, **kwargs: Any) -> None:
         """Clear lower caption text with animation.
 
         Transforms the caption to invisible text (BLACK color) to effectively
@@ -767,6 +723,22 @@ class HUD2DScene(ThreeDScene):
             self.caption(text, run_time=fade_time, **kwargs)
             self.wait(display_time)
             self.clear_caption(run_time=fade_time, **kwargs)
+
+class HUD2DCamera(ThreeDCamera):
+    """ThreeDCamera with frame attribute for HUD2DScene."""
+    frame: "Frame2DWrapper"
+
+
+class CameraWithFrame:
+    """Typed wrapper for camera with frame attribute."""
+
+    def __init__(self, camera):
+        self._camera = camera
+        self.frame: Optional[Frame2DWrapper] = None  # Set in setup
+
+    def __getattr__(self, name):
+        """Delegate all other attributes to the actual camera."""
+        return getattr(self._camera, name)
 
 #TODO added z index to naration and caption
 #    appear to have worked, BUT may require a bg to ensure visibility when something renders below it in z space
@@ -1272,242 +1244,47 @@ class Frame2DWrapper:
         # noinspection PyProtectedMember
         return self.camera._frame_center.get_center() # type: ignore[attr-defined]  # noqa: SLF001
 
-class Frame2DAnimateWrapper:
-    """Animation builder for chaining camera movements (user-facing).
 
-    This class provides the animation builder interface for `Frame2DWrapper.animate`,
-    allowing users to chain multiple camera transformations into a single animation.
-    It mirrors the behavior of :class:`~.MovingCameraScene`'s frame animation API.
-
-    Users access this through ``self.camera.frame.animate`` in :class:`HUD2DScene`:
-
-    .. code-block:: python
-
-        # Single transformation
-        self.play(self.camera.frame.animate.shift(RIGHT * 2))
-
-        # Chained transformations
-        self.play(
-            self.camera.frame.animate
-                .move_to(RIGHT * 2)
-                .scale(0.5)
-        )
-
-    Parameters
-    ----------
-    frame_wrapper : Frame2DWrapper
-        The Frame2DWrapper instance to animate
-
-    Attributes
-    ----------
-    frame : Frame2DWrapper
-        Reference to the Frame2DWrapper being animated
-    target_center : Mobject
-        Copy of the camera's frame center for tracking target position
-    target_zoom : float
-        Target zoom value for the animation
-
-    Notes
-    -----
-    - Method chaining is supported: each method returns ``self``
-    - All transformations are accumulated and applied together in :meth:`build`
-    - The :meth:`build` method creates an :class:`~.AnimationGroup` with all transformations
-    - This mirrors :class:`~.MovingCameraScene`'s ``camera.frame.animate`` behavior
-
-    See Also
-    --------
-    :class:`Frame2DWrapper` : The wrapper being animated
-    :class:`HUD2DScene` : Scene class that uses this animation builder
-    :class:`~.MovingCameraScene` : Manim's 2D camera scene (API compatibility target)
-    """
+class Frame2DAnimateWrapper(AnimationGroup):
+    """Animation builder that extends AnimationGroup for type compatibility. """
 
     def __init__(self, frame_wrapper: Frame2DWrapper):
-        """Initialize the animation builder.
-
-        Parameters
-        ----------
-        frame_wrapper : Frame2DWrapper
-            The Frame2DWrapper instance to animate
-        """
+        super().__init__()
         self.frame = frame_wrapper
         # Store initial state
-        # noinspection PyProtectedMember
-        self.target_center = self.frame.camera._frame_center.copy() # type: ignore[attr-defined]  # noqa: SLF001
+        self.target_center = self.frame.camera._frame_center.copy()
         self.target_zoom = self.frame.camera.zoom_tracker.get_value()
 
     def move_to(self, point):
-        """Chain a move_to transformation.
-
-        Moves the camera frame center to the specified point. This transformation
-        will be animated when passed to :meth:`~.Scene.play`.
-
-        Parameters
-        ----------
-        point : Point3DLike
-            Target position for the camera frame center
-
-        Returns
-        -------
-        Frame2DAnimateWrapper
-            Self for method chaining
-
-        Examples
-        --------
-        .. code-block:: python
-
-            class MoveToExample(HUD2DScene):
-                def construct(self):
-                    square = Square().shift(RIGHT * 3)
-                    self.add(square)
-
-                    # Animate camera to square
-                    self.play(self.camera.frame.animate.move_to(square))
-        """
         self.target_center.move_to(point)
-
         return self
 
     def shift(self, vector):
-        """Chain a shift transformation.
-
-        Shifts the camera frame center by the specified vector. This transformation
-        will be animated when passed to :meth:`~.Scene.play`.
-
-        Parameters
-        ----------
-        vector : Vector3D
-            Displacement vector for the camera frame
-
-        Returns
-        -------
-        Frame2DAnimateWrapper
-            Self for method chaining
-
-        Examples
-        --------
-        .. code-block:: python
-
-            class ShiftExample(HUD2DScene):
-                def construct(self):
-                    # Animate camera shift
-                    self.play(self.camera.frame.animate.shift(RIGHT * 2 + UP))
-        """
         self.target_center.shift(vector)
-
         return self
 
     def scale(self, scale_factor: float):
-        """Chain a scale transformation.
-
-        Scales the camera frame by the specified factor. Larger factors zoom out,
-        smaller factors zoom in. This transformation will be animated when passed
-        to :meth:`~.Scene.play`.
-
-        Parameters
-        ----------
-        scale_factor : float
-            Scaling factor (must be positive). Values > 1 zoom out, values < 1 zoom in.
-
-        Returns
-        -------
-        Frame2DAnimateWrapper
-            Self for method chaining
-
-        Examples
-        --------
-        .. code-block:: python
-
-            class ScaleExample(HUD2DScene):
-                def construct(self):
-                    # Zoom in (scale < 1)
-                    self.play(self.camera.frame.animate.scale(0.5))
-                    self.wait()
-
-                    # Zoom out (scale > 1)
-                    self.play(self.camera.frame.animate.scale(2))
-
-        Notes
-        -----
-        Negative scale factors are not supported and will produce undefined behavior.
-        """
         self.target_zoom = self.target_zoom / scale_factor
-
         return self
 
     def set(self, width: float = None, height: float = None):
-        """Chain a dimension-setting transformation.
-
-        Sets the camera frame to specific width or height. This transformation
-        will be animated when passed to :meth:`~.Scene.play`.
-
-        Parameters
-        ----------
-        width : float, optional
-            Target frame width. Takes precedence if both specified.
-        height : float, optional
-            Target frame height. Used only if width not specified.
-
-        Returns
-        -------
-        Frame2DAnimateWrapper
-            Self for method chaining
-
-        Examples
-        --------
-        .. code-block:: python
-
-            class SetExample(HUD2DScene):
-                def construct(self):
-                    square = Square(side_length=4)
-                    self.add(square)
-
-                    # Animate to fit square with margin
-                    self.play(self.camera.frame.animate.set(width=6))
-
-        Notes
-        -----
-        If both width and height are specified, width takes precedence.
-        Zero or negative values are not recommended and may cause undefined behavior.
-        """
         if width is not None:
             from manim import config
             self.target_zoom = config["frame_width"] / width
-
         elif height is not None:
             from manim import config
             self.target_zoom = config["frame_height"] / height
-
         return self
 
-    # noinspection PyProtectedMember
-    def build(self):
-        """Build the animation from accumulated transformations.
-
-        This method is called internally by :meth:`~.Scene.play` to create the
-        actual animation. It combines all chained transformations into a single
-        :class:`~.AnimationGroup`.
-
-        Returns
-        -------
-        AnimationGroup
-            Animation group containing frame center and zoom animations
-
-        Notes
-        -----
-        - Always creates animations for both frame center and zoom, even if unchanged
-        - Uses :class:`~.AnimationGroup` to synchronize transformations
-        - Called automatically by Manim's animation system; users don't call this directly
-        """
+    def __iter__(self) -> Iterator[Animation]:
+        """Return animations for Scene.play() compatibility."""
         animations = [
-            # Always create animation for frame center (even if unchanged)
-            self.frame.camera._frame_center.animate.move_to( # type: ignore[attr-defined]  # noqa: SLF001
+            self.frame.camera._frame_center.animate.move_to(
                 self.target_center.get_center()
             ),
-            # Always create animation for zoom (even if unchanged)
             self.frame.camera.zoom_tracker.animate.set_value(self.target_zoom),
         ]
-
-        return AnimationGroup(*animations)
+        return iter(animations)
 
 class TranscriptManager:
     """Internal manager for transcript output (not directly user-facing).
