@@ -115,11 +115,11 @@ from __future__ import annotations
 __all__ = ["KaspaDAG"]
 
 import math
-from typing import Optional, List, TYPE_CHECKING, Set, Callable, Union
+from typing import Optional, List, TYPE_CHECKING, Set, Callable, Union, Dict
 
 import numpy as np
 from manim import Wait, RIGHT, config, AnimationGroup, Animation, UpdateFromFunc, Indicate, RED, ORANGE, YELLOW, logger, \
-    linear, FadeOut, ORIGIN
+    linear, FadeOut, ORIGIN, PURE_BLUE
 
 from .logical_block import KaspaLogicalBlock, VirtualKaspaBlock
 from .config import KaspaConfig, DEFAULT_KASPA_CONFIG, _KaspaConfigInternal
@@ -367,6 +367,221 @@ class KaspaDAG:
         """Animate the complete GhostDAG process for a context block."""
         self.ghostdag_highlighter.animate_ghostdag_process(context_block, narrate=narrate, step_delay=step_delay)
 
+    ########################################
+    # New Block and GHOSTDAG
+    ########################################
+
+    def add_block_with_params(
+            self,
+            name: str,
+            parents: Optional[List[Union[str, KaspaLogicalBlock]]] = None,
+            label: Optional[str] = None,
+            custom_hash: Optional[int] = None,
+            timestamp: float = 0,
+            **kwargs
+    ) -> KaspaLogicalBlock:
+        """Add a block with full parameter support and immediate animation."""
+        # Resolve parent names to actual blocks
+        resolved_parents = []
+        if parents:
+            for parent in parents:
+                if isinstance(parent, str):
+                    parent_block = self.get_block(parent)
+                    if parent_block is None:
+                        raise ValueError(f"Parent block '{parent}' not found")
+                    resolved_parents.append(parent_block)
+                else:
+                    resolved_parents.append(parent)
+
+        # Calculate position directly (inline from calculate_dag_position)
+        if not resolved_parents:
+            # Genesis block
+            position = self.config.genesis_x, self.config.genesis_y
+        else:
+            # Use rightmost parent for x-position
+            rightmost_parent = max(resolved_parents, key=lambda p: p.get_center()[0])
+            parent_pos = rightmost_parent.get_center()
+            x_position = parent_pos[0] + self.config.horizontal_spacing
+
+            # Find blocks at same x-position
+            same_x_blocks = [
+                b for b in self.all_blocks
+                if abs(b.get_center()[0] - x_position) < 0.01
+            ]
+
+            if not same_x_blocks:
+                # First block at this x - use gen_y y
+                y_position = self.config.genesis_y
+            else:
+                # Stack above topmost neighbor
+                topmost_y = max(b.get_center()[1] for b in same_x_blocks)
+                y_position = topmost_y + (self.config.vertical_spacing * 0.5)
+
+            position = x_position, y_position
+
+        # Create block directly (no placeholder)
+        block = KaspaLogicalBlock(
+            name=name,
+            timestamp=timestamp,
+            parents=resolved_parents,
+            position=position,
+            config=self.config,
+            custom_label=label,
+            custom_hash=custom_hash,
+        )
+
+        # Register block
+        self.blocks[name] = block
+        self.all_blocks.append(block)
+
+        if not resolved_parents:
+            self.genesis = block
+
+        # Handle future kwargs (warn if unused)
+        if kwargs:
+            import warnings
+            warnings.warn(f"Unused parameters: {list(kwargs.keys())}")
+
+        # Animate creation and column repositioning with camera shift
+        self._animate_block_creation_with_repositioning(block)
+
+        return block
+
+    def _animate_block_creation_with_repositioning(self, block: KaspaLogicalBlock):
+        """Animate block creation, shift existing column blocks, and move camera."""
+        animations = []
+
+        # Add camera shift animation to the same play call
+        camera_anim = self._get_camera_follow_animation()
+        if camera_anim:
+            animations.append(camera_anim)
+
+        # Add block creation animation
+        animations.append(block.visual_block.create_with_lines())
+
+        # Find and shift existing blocks in same column
+        x_position = block.visual_block.square.get_center()[0]
+        column_blocks = [
+            b for b in self.all_blocks
+            if b != block and abs(b.visual_block.square.get_center()[0] - x_position) < 0.01
+        ]
+
+        if column_blocks:
+            # Calculate shift (same logic as create_and_reposition_together)
+            shift_y = -self.config.vertical_spacing / 2
+
+            # Shift existing blocks
+            for existing_block in column_blocks:
+                animations.append(
+                    existing_block.visual_block.create_movement_animation(
+                        existing_block.visual_block.animate.shift(np.array([0, shift_y, 0]))
+                    )
+                )
+
+        # Play all animations together including camera shift
+        self.scene.play(*animations)
+
+    # TODO this should probably also find the block being added and move to it
+    def _get_camera_follow_animation(self):
+        """Get camera follow animation without playing it immediately."""
+        if not self.all_blocks:
+            return None
+
+        # find far right blocks
+        rightmost_x = max(block.get_center()[0] for block in self.all_blocks)
+
+        margin = self.config.horizontal_spacing * 2
+        current_center = self.scene.camera.frame.get_center()
+        frame_width = config["frame_width"]
+        right_edge = current_center[0] + (frame_width / 2)
+
+        if rightmost_x > right_edge - margin:
+            shift_amount = rightmost_x - (right_edge - margin)
+            return self.scene.camera.frame.animate.shift(RIGHT * shift_amount)
+
+        return None
+
+    def show_ghostdag(self, pov_block: KaspaLogicalBlock):
+        """Show ghost dag."""
+
+        # early return if genesis is passed to show_ghostdag(), this should not happen
+        if pov_block.selected_parent is None:
+            return
+
+        self._show_selecting_best_parent(pov_block)
+
+        self.show_inheriting_sp_view(pov_block)
+
+#        self.show_ordering_mergeset()
+
+#        self.show_coloring_mergeset()
+
+#        self.show_calc_blue_score()
+
+        return
+
+    def _show_selecting_best_parent(self, pov_block):
+        """Show best parent"""
+        block_parents = pov_block.parents
+
+        # Highlight block parents
+        block_parents_highlight = [
+            parent.animate.set_stroke_color(YELLOW).set_stroke_width(6)
+            for parent in block_parents
+        ]
+
+        self.scene.play(*block_parents_highlight)
+
+        # display blue score of block parents
+        block_parents_blue_scores = [
+            parent.animate.set_label_text(parent.ghostdag.blue_score)
+            for parent in block_parents
+        ]
+
+        self.scene.play(*block_parents_blue_scores)
+
+        # PoV block already performed GHOSTDAG - SP is at index 0
+        best_parent = pov_block.parents[0]
+        self.scene.play(best_parent.animate.set_fill_color(PURE_BLUE))
+
+        return
+
+    def show_inheriting_sp_view(self, pov_block):
+        """Show inheriting sp view."""
+        # early return if pov_block has gen as sp
+        if pov_block.selected_parent.selected_parent is None:
+            return
+
+        all_sp_pov = pov_block.get_all_selected_parents_pov()
+
+        # Debug print to verify contents
+        self._debug_print_blue_pov(all_sp_pov, f"SP POV for {pov_block.name}")
+
+        return
+
+    def _debug_print_blue_pov(self, blue_pov: Dict['KaspaLogicalBlock', bool], label: str = "Blue POV"):
+        """Debug print function to display blue/red dictionary contents."""
+        print(f"\n=== DEBUG: {label} ===")
+        print(f"Total blocks in POV: {len(blue_pov)}")
+
+        if not blue_pov:
+            print("  (Empty dictionary)")
+            return
+
+            # Sort by block name for consistent output
+        sorted_blocks = sorted(blue_pov.items(), key=lambda x: x[0].name)
+
+        blue_count = sum(1 for _, is_blue in blue_pov.items() if is_blue)
+        red_count = len(blue_pov) - blue_count
+
+        print(f"  Blue blocks: {blue_count}, Red blocks: {red_count}")
+        print("  Block details:")
+
+        for block, is_blue in sorted_blocks:
+            status = "BLUE" if is_blue else "RED"
+            print(f"    {block.name}: {status}")
+
+        print("=" * 40)
     ########################################
     # Simulate Blocks
     ########################################

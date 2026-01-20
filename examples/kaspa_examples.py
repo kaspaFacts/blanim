@@ -1748,3 +1748,82 @@ class GHOSTDAGFig3kExplained(HUD2DScene):
         self.clear_caption()
 
         self.wait(3.0)
+
+class GHOSTDAGLinearOrdering(HUD2DScene):
+    """GHOSTDAG Fig 3 from the 'PHANTOM GHOSTDAG A Scalable Generalization of Nakamoto Consensus, 11/10/21', linear ordering version"""
+
+    def construct(self):
+        dag = KaspaDAG(scene=self)
+        dag.config.k = 3
+        animation_wait_time = 5.0
+        animation_coloring_time = 1.0
+        caption_time = 1.0
+
+        self.wait(1)
+        self.narrate("PHANTOM GHOSTDAG (fig 3) - Virtual Block", run_time=caption_time)
+
+        block_gen = dag.add_block_with_params("Gen", None, "Gen")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_b = dag.add_block_with_params("B", ["Gen"], "B")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_c = dag.add_block_with_params("C", ["Gen"], "C", 1)
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_d = dag.add_block_with_params("D", ["Gen"], "D", 0)
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_e = dag.add_block_with_params("E", ["Gen"], "E", 2)
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_f = dag.add_block_with_params("F", ["B", "C"], "F")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_h = dag.add_block_with_params("H", ["D", "C", "E"], "H")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_i = dag.add_block_with_params("I", ["E"], "I")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_j = dag.add_block_with_params("J", ["F", "H"], "J")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_k = dag.add_block_with_params("K", ["B", "H", "I"], "K")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_l = dag.add_block_with_params("L", ["I", "D"], "L")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+        virtual = dag.destroy_virtual_block()
+
+        block_m = dag.add_block_with_params("M", ["K", "F"], "M")
+        virtual = dag.add_virtual_to_scene()
+        dag.show_ghostdag(virtual)
+
+        self.caption("GHOSTDAG: Selecting Chain with highest Blue Scores", run_time=caption_time)
+        self.wait(animation_wait_time)
+
+        ##########
+        #
+        ##########

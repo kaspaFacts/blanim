@@ -475,6 +475,30 @@ class KaspaLogicalBlock:
 
         return list(total_dag - past - future - {self})
 
+    def get_selected_parent_chain(self) -> List['KaspaLogicalBlock']:
+        """Get ordered list of selected parents from self back to genesis."""
+        selected_parent_chain_to_genesis = []
+        current_block = self
+
+        while current_block and current_block.selected_parent:
+            selected_parent_chain_to_genesis.append(current_block.selected_parent)
+            current_block = current_block.selected_parent
+
+        return selected_parent_chain_to_genesis
+
+    def get_all_selected_parents_pov(self) -> Dict['KaspaLogicalBlock', bool]:
+        """Get the complete blue/red classification from all selected parents in the chain."""
+        all_pov = {}
+
+        # Get ordered list of selected parents
+        sp_chain = self.get_selected_parent_chain()
+
+        # Collect blue/red data from each selected parent
+        for sp in sp_chain:
+            all_pov.update(sp.ghostdag.local_blue_pov)
+
+        return all_pov
+
     ########################################
     # Accessing Visual Block
     ########################################
@@ -673,6 +697,27 @@ class BlockAnimationBuilder(AnimationGroup):
                 self.block.visual_block.label.animate
         self._animations_by_mobject[self.block.visual_block.label] = \
             self._animations_by_mobject[self.block.visual_block.label].set_color(color)
+        return self
+
+    # TODO fully test this
+    def reset_block(self) -> 'BlockAnimationBuilder':
+        """Reset all block properties to creation-time values."""
+        # Reset square properties individually
+        if self.block.visual_block.square not in self._animations_by_mobject:
+            self._animations_by_mobject[self.block.visual_block.square] = \
+                self.block.visual_block.square.animate
+
+            # Chain individual property resets
+        self._animations_by_mobject[self.block.visual_block.square] = \
+            self._animations_by_mobject[self.block.visual_block.square] \
+                .set_fill(color=self.block.visual_block.creation_block_fill_color) \
+                .set_stroke(color=self.block.visual_block.creation_block_stroke_color) \
+                .set_stroke(width=self.block.visual_block.creation_block_stroke_width)
+
+        # Reset label text
+        self._animations_by_mobject[self.block.visual_block.label] = \
+            self.block.visual_block.change_label(self.block.visual_block.creation_block_label)
+
         return self
 
     def set_bg_rect_opacity(self, opacity: float) -> 'BlockAnimationBuilder':

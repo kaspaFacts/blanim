@@ -245,7 +245,7 @@ class KaspaVisualBlock(BaseVisualBlock):
 
         Parameters
         ----------
-        animation : Animation
+        animation : Animation | _AnimationBuilder
             The movement animation to wrap (typically block.animate.shift()).
 
         Returns
