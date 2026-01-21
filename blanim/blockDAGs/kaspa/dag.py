@@ -115,11 +115,11 @@ from __future__ import annotations
 __all__ = ["KaspaDAG"]
 
 import math
-from typing import Optional, List, TYPE_CHECKING, Set, Callable, Union, Dict
+from typing import Optional, List, TYPE_CHECKING, Set, Callable, Union
 
 import numpy as np
 from manim import Wait, RIGHT, config, AnimationGroup, Animation, UpdateFromFunc, Indicate, RED, ORANGE, YELLOW, logger, \
-    linear, FadeOut, ORIGIN, PURE_BLUE
+    linear, FadeOut, ORIGIN, PURE_BLUE, PURE_RED
 
 from .logical_block import KaspaLogicalBlock, VirtualKaspaBlock
 from .config import KaspaConfig, DEFAULT_KASPA_CONFIG, _KaspaConfigInternal
@@ -378,6 +378,7 @@ class KaspaDAG:
             label: Optional[str] = None,
             custom_hash: Optional[int] = None,
             timestamp: float = 0,
+            stack_to_bottom: bool = False,
             **kwargs
     ) -> KaspaLogicalBlock:
         """Add a block with full parameter support and immediate animation."""
@@ -413,9 +414,13 @@ class KaspaDAG:
                 # First block at this x - use gen_y y
                 y_position = self.config.genesis_y
             else:
-                # Stack above topmost neighbor
-                topmost_y = max(b.get_center()[1] for b in same_x_blocks)
-                y_position = topmost_y + (self.config.vertical_spacing * 0.5)
+                # Stack above(if stack_to_bottom = True) topmost neighbor
+                if stack_to_bottom:
+                    topmost_y = max(b.get_center()[1] for b in same_x_blocks)
+                    y_position = topmost_y + (self.config.vertical_spacing * 0.5)
+                else:
+                    bottommost_y = min(b.get_center()[1] for b in same_x_blocks)
+                    y_position = bottommost_y - (self.config.vertical_spacing * 0.5)
 
             position = x_position, y_position
 
@@ -443,11 +448,11 @@ class KaspaDAG:
             warnings.warn(f"Unused parameters: {list(kwargs.keys())}")
 
         # Animate creation and column repositioning with camera shift
-        self._animate_block_creation_with_repositioning(block)
+        self._animate_block_creation_with_repositioning(block, stack_to_bottom)
 
         return block
 
-    def _animate_block_creation_with_repositioning(self, block: KaspaLogicalBlock):
+    def _animate_block_creation_with_repositioning(self, block: KaspaLogicalBlock, stack_to_bottom: bool = False) -> None:
         """Animate block creation, shift existing column blocks, and move camera."""
         animations = []
 
@@ -468,7 +473,10 @@ class KaspaDAG:
 
         if column_blocks:
             # Calculate shift (same logic as create_and_reposition_together)
-            shift_y = -self.config.vertical_spacing / 2
+            if stack_to_bottom:
+                shift_y = -self.config.vertical_spacing / 2
+            else:
+                shift_y = self.config.vertical_spacing / 2
 
             # Shift existing blocks
             for existing_block in column_blocks:
@@ -512,12 +520,17 @@ class KaspaDAG:
 
         self.show_inheriting_sp_view(pov_block)
 
-#        self.show_ordering_mergeset()
+        self.show_ordering_mergeset(pov_block)
 
-#        self.show_coloring_mergeset()
+#        self.show_coloring_mergeset(pov_block)
 
-#        self.show_calc_blue_score()
+#        self.show_calc_blue_score(pov_block)
 
+        reset_animation = []
+        for block in self.all_blocks:
+            reset_animation.append(block.animate.reset_block())
+
+        self.scene.play(*reset_animation)
         return
 
     def _show_selecting_best_parent(self, pov_block):
@@ -544,6 +557,13 @@ class KaspaDAG:
         best_parent = pov_block.parents[0]
         self.scene.play(best_parent.animate.set_fill_color(PURE_BLUE))
 
+        # reset block parent labels
+        reset_parent_labels = []
+        for parent in block_parents:
+            reset_parent_labels.append(parent.animate.reset_label_text())
+
+        self.scene.play(*reset_parent_labels)
+
         return
 
     def show_inheriting_sp_view(self, pov_block):
@@ -554,34 +574,37 @@ class KaspaDAG:
 
         all_sp_pov = pov_block.get_all_selected_parents_pov()
 
-        # Debug print to verify contents
-        self._debug_print_blue_pov(all_sp_pov, f"SP POV for {pov_block.name}")
+        # Color blocks based on their blue status
+        animations = []
+        for block, is_blue in all_sp_pov.items():
+            if is_blue:
+                # Color blue blocks
+                animations.append(
+                    block.animate.set_fill_color(PURE_BLUE)
+                )
+            else:
+                # Color red blocks
+                animations.append(
+                    block.animate.set_fill_color(PURE_RED)
+                )
+
+        # Play all color animations together
+        if animations:
+            self.scene.play(*animations)
 
         return
 
-    def _debug_print_blue_pov(self, blue_pov: Dict['KaspaLogicalBlock', bool], label: str = "Blue POV"):
-        """Debug print function to display blue/red dictionary contents."""
-        print(f"\n=== DEBUG: {label} ===")
-        print(f"Total blocks in POV: {len(blue_pov)}")
+    def show_ordering_mergeset(self, pov_block):
+        """Show ordering mergeset."""
+        ordered_mergeset = pov_block.get_sorted_mergeset_without_sp()
 
-        if not blue_pov:
-            print("  (Empty dictionary)")
-            return
+        # change label to ordering, in order
+        for index, block in enumerate(ordered_mergeset):
+            self.scene.play(block.animate.set_label_text("\u00b7")) # kaph \u1090a or centerdot \u00b7
+            self.scene.play(block.animate.set_label_text(index + 1))
 
-            # Sort by block name for consistent output
-        sorted_blocks = sorted(blue_pov.items(), key=lambda x: x[0].name)
+        return
 
-        blue_count = sum(1 for _, is_blue in blue_pov.items() if is_blue)
-        red_count = len(blue_pov) - blue_count
-
-        print(f"  Blue blocks: {blue_count}, Red blocks: {red_count}")
-        print("  Block details:")
-
-        for block, is_blue in sorted_blocks:
-            status = "BLUE" if is_blue else "RED"
-            print(f"    {block.name}: {status}")
-
-        print("=" * 40)
     ########################################
     # Simulate Blocks
     ########################################
