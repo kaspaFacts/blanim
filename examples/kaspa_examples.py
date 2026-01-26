@@ -1760,31 +1760,31 @@ class GHOSTDAGLinearOrdering(HUD2DScene):
         caption_time = 1.0
 
         self.wait(1)
-        self.narrate("PHANTOM GHOSTDAG (fig 3) - Virtual Block", run_time=caption_time)
+        self.narrate("PHANTOM GHOSTDAG k = 3 (fig 3) - Virtual Block", run_time=caption_time)
 
         block_gen = dag.add_block_with_params("Gen", None, "Gen", stack_to_bottom=False)
         virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
+#        dag.show_ghostdag(virtual)
         virtual = dag.destroy_virtual_block()
 
         block_b = dag.add_block_with_params("B", ["Gen"], "B", stack_to_bottom=False)
         virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
+#        dag.show_ghostdag(virtual)
         virtual = dag.destroy_virtual_block()
 
         block_c = dag.add_block_with_params("C", ["Gen"], "C", 1, stack_to_bottom=False)
         virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
+#        dag.show_ghostdag(virtual)
         virtual = dag.destroy_virtual_block()
 
         block_d = dag.add_block_with_params("D", ["Gen"], "D", 0, stack_to_bottom=False)
         virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
+#        dag.show_ghostdag(virtual)
         virtual = dag.destroy_virtual_block()
 
         block_e = dag.add_block_with_params("E", ["Gen"], "E", 2, stack_to_bottom=False)
         virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
+#        dag.show_ghostdag(virtual)
         virtual = dag.destroy_virtual_block()
 
         block_f = dag.add_block_with_params("F", ["B", "C"], "F", stack_to_bottom=False)
@@ -1821,7 +1821,7 @@ class GHOSTDAGLinearOrdering(HUD2DScene):
         virtual = dag.add_virtual_to_scene()
         dag.show_ghostdag(virtual)
 
-        self.caption("GHOSTDAG: Selecting Chain with highest Blue Scores", run_time=caption_time)
+#        self.caption("GHOSTDAG: Virtual PoV is the nodes PoV", run_time=caption_time)
         self.wait(animation_wait_time)
 
         ##########

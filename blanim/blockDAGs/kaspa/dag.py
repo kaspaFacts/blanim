@@ -119,7 +119,7 @@ from typing import Optional, List, TYPE_CHECKING, Set, Callable, Union
 
 import numpy as np
 from manim import Wait, RIGHT, config, AnimationGroup, Animation, UpdateFromFunc, Indicate, RED, ORANGE, YELLOW, logger, \
-    linear, FadeOut, ORIGIN, PURE_BLUE, PURE_RED
+    linear, FadeOut, ORIGIN, PURE_BLUE, PURE_RED, PURE_GREEN
 
 from .logical_block import KaspaLogicalBlock, VirtualKaspaBlock
 from .config import KaspaConfig, DEFAULT_KASPA_CONFIG, _KaspaConfigInternal
@@ -275,17 +275,23 @@ class KaspaDAG:
         if highlight_animations:
             self.scene.play(*highlight_animations)
 
-    def fade_except_past(self, focused_block: KaspaLogicalBlock | str) -> None:
+    def fade_except_past(self, focused_block: KaspaLogicalBlock | str, with_unfade:bool = False) -> set[KaspaLogicalBlock]:
         """Fade all blocks except the focused block and its past cone.
 
         Args:
             focused_block: Block name or KaspaLogicalBlock instance to keep visible
+            with_unfade: setting to true unfades all blocks except the focused block and the past of focused block
+
+        Returns:
+            Set of unfaded blocks (past + focused block). Returns empty set if
+            focused_block not found.
+
         """
         # Handle both string names and block references
         if isinstance(focused_block, str):
             target_block = self.get_block(focused_block)
             if target_block is None:
-                return
+                return set()
         else:
             target_block = focused_block
 
@@ -301,19 +307,27 @@ class KaspaDAG:
 
         # Use the existing fade function with deduplication
         if blocks_to_fade:
-            self.fade_blocks(blocks_to_fade)
+            self.fade_blocks(blocks_to_fade, with_unfade=with_unfade)
 
-    def fade_except_future(self, focused_block: KaspaLogicalBlock | str) -> None:
+        return past_blocks
+
+    def fade_except_future(self, focused_block: KaspaLogicalBlock | str, with_unfade:bool = False) -> set[KaspaLogicalBlock]:
         """Fade all blocks except the focused block and its future cone.
 
         Args:
             focused_block: Block name or KaspaLogicalBlock instance to keep visible
+            with_unfade: setting to true unfades all blocks except the focused block and the future of focused block
+
+        Returns:
+            Set of unfaded blocks (future + focused block). Returns empty set if
+            focused_block not found.
+
         """
         # Handle both string names and block references
         if isinstance(focused_block, str):
             target_block = self.get_block(focused_block)
             if target_block is None:
-                return
+                return set()
         else:
             target_block = focused_block
 
@@ -329,19 +343,27 @@ class KaspaDAG:
 
         # Use the existing fade function with deduplication
         if blocks_to_fade:
-            self.fade_blocks(blocks_to_fade)
+            self.fade_blocks(blocks_to_fade, with_unfade=with_unfade)
 
-    def fade_except_anticone(self, focused_block: KaspaLogicalBlock | str) -> None:
+        return future_blocks
+
+    def fade_except_anticone(self, focused_block: KaspaLogicalBlock | str, with_unfade:bool = False) -> set[KaspaLogicalBlock]:
         """Fade all blocks except the focused block and its anticone.
 
         Args:
             focused_block: Block name or KaspaLogicalBlock instance to keep visible
+            with_unfade: setting to true unfades all blocks except the focused block and the anticone of focused block
+
+        Returns:
+            Set of unfaded blocks (anticone + focused block). Returns empty set if
+            focused_block not found.
+
         """
         # Handle both string names and block references
         if isinstance(focused_block, str):
             target_block = self.get_block(focused_block)
             if target_block is None:
-                return
+                return set()
         else:
             target_block = focused_block
 
@@ -357,8 +379,9 @@ class KaspaDAG:
 
         # Use the existing fade function with deduplication
         if blocks_to_fade:
-            self.fade_blocks(blocks_to_fade)
+            self.fade_blocks(blocks_to_fade, with_unfade=with_unfade)
 
+        return anticone_blocks
     ########################################
     # Highlighting GHOSTDAG
     ########################################
@@ -510,27 +533,33 @@ class KaspaDAG:
         return None
 
     def show_ghostdag(self, pov_block: KaspaLogicalBlock):
-        """Show ghost dag."""
+        """Show ghostdag."""
 
         # early return if genesis is passed to show_ghostdag(), this should not happen
         if pov_block.selected_parent is None:
             return
 
+        self.scene.caption("select the best parent")
         self._show_selecting_best_parent(pov_block)
 
+        self.scene.caption("inherit selected parents past")
         self.show_inheriting_sp_view(pov_block)
 
+        self.scene.caption("order mergeset")
         self.show_ordering_mergeset(pov_block)
 
-#        self.show_coloring_mergeset(pov_block)
+        self.scene.caption("color the mergeset")
+        self.show_coloring_mergeset(pov_block)
 
-#        self.show_calc_blue_score(pov_block)
+        self.scene.caption("calculate blue score")
+        self.show_calc_blue_score(pov_block)
 
         reset_animation = []
         for block in self.all_blocks:
             reset_animation.append(block.animate.reset_block())
 
         self.scene.play(*reset_animation)
+        self.scene.clear_caption()
         return
 
     def _show_selecting_best_parent(self, pov_block):
@@ -560,7 +589,7 @@ class KaspaDAG:
         # reset block parent labels
         reset_parent_labels = []
         for parent in block_parents:
-            reset_parent_labels.append(parent.animate.reset_label_text())
+            reset_parent_labels.append(parent.animate.reset_label_text().reset_stroke_color().reset_stroke_width())
 
         self.scene.play(*reset_parent_labels)
 
@@ -604,6 +633,149 @@ class KaspaDAG:
             self.scene.play(block.animate.set_label_text(index + 1))
 
         return
+
+    def show_coloring_mergeset(self, pov_block):
+        """Show coloring mergeset."""
+        ordered_mergeset = pov_block.get_sorted_mergeset_without_sp()
+
+        # all existing blues according to sp, then add sp
+        blue_blocks = {block for block, is_blue in pov_block.selected_parent.ghostdag.local_blue_pov.items() if is_blue}
+        blue_blocks.add(pov_block.selected_parent)
+
+        # check each blue candidate
+        for blue_candidate in ordered_mergeset:
+            first_check_passed = True
+            second_check_passed = True
+            # show coloring process
+            self.fade_except_anticone(blue_candidate, True)
+            self.scene.play(blue_candidate.animate.set_fill_color(PURE_GREEN))
+
+            blue_candidate_anticone = set(blue_candidate.get_anticone_in_past(pov_block))
+
+            first_check_anticone_blues = 0
+
+            for blue_anticone_block in blue_candidate_anticone & blue_blocks:
+                # increment count and identify blue in anticone
+                first_check_anticone_blues += 1
+                self.scene.play(blue_anticone_block.animate.set_stroke_color(YELLOW).set_stroke_width(6))
+
+            if first_check_anticone_blues > self.config.k:
+                # failed first check
+                self.scene.caption("too many anticone blues")
+                self.scene.play(blue_candidate.animate.set_fill_color(PURE_RED))
+                first_check_passed = False
+
+            # reset blocks
+            reset_blue_candidate_anticone_blocks_animations = []
+            for blue_anticone_block in blue_candidate_anticone & blue_blocks:
+                reset_blue_candidate_anticone_blocks_animations.append(blue_anticone_block.animate.reset_stroke_width().reset_stroke_color())
+            if reset_blue_candidate_anticone_blocks_animations:
+                self.scene.play(*reset_blue_candidate_anticone_blocks_animations)
+                self.scene.clear_caption()
+
+            # perform second checks IF first check passed
+            for blue_anticone_block in blue_candidate_anticone & blue_blocks:
+                if not first_check_passed:
+                    break
+                second_check_anticone_blues = 0
+                second_check_anticone_blocks = self.fade_except_anticone(blue_anticone_block, True)
+                self.scene.play(blue_anticone_block.animate.set_stroke_color(PURE_GREEN).set_stroke_width(6))
+
+                # Temp add blue candidate to blue blocks and remove blue anticone block
+                temp_blue_blocks = set(blue_blocks)
+                temp_blue_blocks.remove(blue_anticone_block)
+                temp_blue_blocks.add(blue_candidate)
+
+                reset_stroke_anims = []
+
+                for block in second_check_anticone_blocks & temp_blue_blocks:
+                    second_check_anticone_blues += 1
+                    self.scene.play(block.animate.set_stroke_color(YELLOW).set_stroke_width(6))
+                    reset_stroke_anims.append(block.animate.reset_stroke_color().reset_stroke_width())
+                    # if second_check_anticone_blues > self.config.k:
+                    #     second_check_passed = False
+                    #     break
+
+                if second_check_anticone_blues > self.config.k:
+                    self.scene.caption("adding blue candidate would cause existing blue to violate k")
+                    second_check_passed = False
+
+                    reset_stroke_anims.append(blue_anticone_block.animate.reset_stroke_width().reset_stroke_color())
+                    reset_stroke_anims.append(blue_candidate.animate.set_fill_color(PURE_RED).reset_stroke_width().reset_stroke_color())
+                    self.scene.play(*reset_stroke_anims)
+                    # reset each highlighted block here before break
+                    break
+
+                reset_stroke_anims.append(blue_anticone_block.animate.reset_stroke_width().reset_stroke_color())
+                self.scene.play(*reset_stroke_anims)
+
+            if first_check_passed and second_check_passed:
+                self.scene.play(blue_candidate.animate.set_fill_color(PURE_BLUE))
+                self.scene.caption("blue candidate passed both checks")
+                blue_blocks.add(blue_candidate)
+
+            reset_blue_candidate_anticone_animations = []
+            for anticone_block in blue_candidate_anticone & blue_blocks:
+                reset_blue_candidate_anticone_animations.append(anticone_block.animate.reset_stroke_color().reset_stroke_width())
+
+            if reset_blue_candidate_anticone_animations:
+                self.scene.play(*reset_blue_candidate_anticone_animations)
+        self.scene.clear_caption()
+        self.unfade_blocks(self.all_blocks)
+        return
+
+    def show_calc_blue_score(self, pov_block):
+
+        # inherit selected_parent.blue_score
+        self.fade_except_past(pov_block.selected_parent)
+        self.scene.caption(f"start with blue score of SP = {pov_block.selected_parent.ghostdag.blue_score}")
+        self.scene.wait(3)
+
+        # add one for selected_parent
+        self.scene.play(pov_block.selected_parent.animate.set_stroke_color(YELLOW).set_stroke_width(6))
+        self.scene.caption("add one for SP, always blue")
+        self.scene.wait(3)
+
+        # add one for each mergeset_blue
+        mergeset_blues = pov_block.get_sorted_mergeset_blues()
+        self.fade_except_past(pov_block, with_unfade=True)
+
+        for blue_block in mergeset_blues:
+            self.scene.play(blue_block.animate.set_stroke_color(YELLOW).set_stroke_width(6))
+            self.scene.caption("add one for mergeset blue")
+            self.scene.wait(3)
+            self.scene.clear_caption()
+
+        self.scene.caption(f"blue score = {pov_block.ghostdag.blue_score}")
+        self.scene.wait(3)
+        self.scene.clear_caption()
+        self.unfade_blocks(self.all_blocks)
+
+    def show_blue_score(self, focused_block: KaspaLogicalBlock | str) -> set[KaspaLogicalBlock]:
+        """show the blue_score of the given block.
+
+        Args:
+            focused_block: Block name or KaspaLogicalBlock instance to show blue_score
+
+        Returns:
+            Set of unfaded blocks (past + focused block). Returns empty set if
+            focused_block not found.
+
+        """
+        # Handle both string names and block references
+        if isinstance(focused_block, str):
+            target_block = self.get_block(focused_block)
+            if target_block is None:
+                return set()
+        else:
+            target_block = focused_block
+
+        unfaded_blocks = self.fade_except_past(target_block)
+
+        coloring_animations = []
+        # TODO start back here
+
+        return unfaded_blocks
 
     ########################################
     # Simulate Blocks
@@ -1416,13 +1588,12 @@ class KaspaDAG:
             run_time=self.config.camera_follow_time
         )
 
-    def fade_blocks(self, *blocks: KaspaLogicalBlock | str | List[KaspaLogicalBlock | str]) -> None:
+    def fade_blocks(self, *blocks: KaspaLogicalBlock | str | List[KaspaLogicalBlock | str], with_unfade:bool = False) -> None:
         """Fade multiple blocks with their lines and play animations.
 
         This function reduces the opacity of blocks and their connecting lines to
         create a visual highlighting effect. It handles mixed argument types and
-        comprehensively fades all connected lines regardless of the faded state
-        of connected blocks.
+        comprehensively fades all connected lines where one block is in faded state.
 
         Parameters
         ----------
@@ -1431,7 +1602,8 @@ class KaspaDAG:
             - A KaspaLogicalBlock instance
             - A string name of a block (with fuzzy matching)
             - A list containing any mix of the above types
-
+        with_unfade : bool
+            If True, unfade all other blocks
         Notes
         -----
         - All parent lines from faded blocks are faded regardless of parent state
@@ -1486,7 +1658,37 @@ class KaspaDAG:
                             line.animate.set_stroke(opacity=self.config.fade_opacity)
                         )
 
-        # Step 4: Play animations directly
+        # Step 4: Create unfade animations for blocks not faded IF with_unfade is true
+        if with_unfade:
+
+            blocks_to_unfade = set(self.all_blocks) - set(resolved_blocks)
+
+            # Set state for blocks being unfaded
+            for block in blocks_to_unfade:
+                block.visual_block.is_faded = False
+
+            for block in blocks_to_unfade:
+                # Add block unfade animations
+                all_animations.extend(block.visual_block.create_unfade_animation())
+
+                # Add parent line unfade animations (only if parent is also unfaded)
+                for i, line in enumerate(block.visual_block.parent_lines):
+                    parent_block = block.parents[i]
+                    if not parent_block.visual_block.is_faded:
+                        all_animations.append(
+                            line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
+                        )
+
+                # Add child line unfade animations (only if child is also unfaded)
+                for logical_child in block.children:
+                    if not logical_child.visual_block.is_faded:
+                        for line in logical_child.visual_block.parent_lines:
+                            if line.parent_block == block.visual_block:  # was block.visual_block.square
+                                all_animations.append(
+                                    line.animate.set_stroke(opacity=self.config.line_stroke_opacity)
+                                )
+
+        # Step 5: Play animations directly
         if all_animations:
             self.scene.play(*all_animations)
 

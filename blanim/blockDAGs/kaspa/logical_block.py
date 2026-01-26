@@ -204,6 +204,66 @@ class KaspaLogicalBlock:
 
         return {}
 
+    def get_sorted_mergeset_blues(self) -> List['KaspaLogicalBlock']:
+        """Get the ordered list of mergeset blocks that are blue."""
+        if not self.selected_parent:
+            return []
+
+            # Get the sorted mergeset excluding selected parent
+        mergeset = self.get_sorted_mergeset_without_sp()
+
+        # Filter to only include blue blocks from local perspective
+        blue_blocks = [
+            block for block in mergeset
+            if self.ghostdag.local_blue_pov.get(block, False)
+        ]
+
+        return blue_blocks
+
+    def get_blue_blocks(self) -> Set['KaspaLogicalBlock']:
+        """
+        Get all blocks that are blue from this block's perspective. note: does not include self
+
+        Returns:
+            Set[KaspaLogicalBlock]: All blocks marked as blue in this block's
+            ghostdag local_blue_pov dictionary.
+        """
+        return {block for block, is_blue in self.ghostdag.local_blue_pov.items() if is_blue}
+
+    # TODO test and verify this
+    def get_consensus_ordered_past(self) -> List['KaspaLogicalBlock']:
+        """
+        Get all blocks in the past cone ordered by GHOSTDAG consensus.
+
+        Returns:
+            List[KaspaLogicalBlock]: Ordered list starting from genesis,
+            following the pattern: Gen -> sp -> ordered mergeset -> sp ->
+            ordered mergeset -> ... -> self
+        """
+
+        def build_reverse_chain(block: 'KaspaLogicalBlock', result: List['KaspaLogicalBlock']) -> None:
+            """Build the chain in reverse order (from self to genesis)."""
+            # Add current block first
+            result.append(block)
+
+            if not block.selected_parent:
+                # Genesis reached
+                return
+
+            # Add the mergeset (excluding selected parent) before the selected parent
+            mergeset_without_sp = block.get_sorted_mergeset_without_sp()
+            result.extend(mergeset_without_sp)
+
+            # Recursively continue with selected parent
+            build_reverse_chain(block.selected_parent, result)
+
+        # Build in reverse order and then reverse
+        reverse_chain = []
+        build_reverse_chain(self, reverse_chain)
+        reverse_chain.reverse()
+
+        return reverse_chain
+
     ########################################
     # Collecting Past/Future/Anticone
     ########################################
