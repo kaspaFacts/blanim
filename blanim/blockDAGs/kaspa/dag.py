@@ -308,6 +308,9 @@ class KaspaDAG:
         # Use the existing fade function with deduplication
         if blocks_to_fade:
             self.fade_blocks(blocks_to_fade, with_unfade=with_unfade)
+        elif with_unfade:
+            # If no blocks to fade but unfade requested, unfade all blocks
+            self.unfade_blocks(*self.all_blocks)
 
         return past_blocks
 
@@ -344,6 +347,9 @@ class KaspaDAG:
         # Use the existing fade function with deduplication
         if blocks_to_fade:
             self.fade_blocks(blocks_to_fade, with_unfade=with_unfade)
+        elif with_unfade:
+            # If no blocks to fade but unfade requested, unfade all blocks
+            self.unfade_blocks(*self.all_blocks)
 
         return future_blocks
 
@@ -380,6 +386,9 @@ class KaspaDAG:
         # Use the existing fade function with deduplication
         if blocks_to_fade:
             self.fade_blocks(blocks_to_fade, with_unfade=with_unfade)
+        elif with_unfade:
+            # If no blocks to fade but unfade requested, unfade all blocks
+            self.unfade_blocks(*self.all_blocks)
 
         return anticone_blocks
     ########################################
@@ -531,6 +540,54 @@ class KaspaDAG:
             return self.scene.camera.frame.animate.shift(RIGHT * shift_amount)
 
         return None
+
+    def show_blue_red_pov(self, pov_block: KaspaLogicalBlock):
+        """Show the blue/red past of a pov block
+
+        Parameters
+        ----------
+        pov_block: KaspaLogicalBlock
+
+        Returns
+        -------
+
+        """
+        # focus on the past
+        self.fade_except_past(pov_block, with_unfade=True)
+
+        reset_animations = []
+        for block in self.all_blocks:
+            reset_animations.append(block.animate.reset_fill_color().reset_stroke_color().reset_stroke_width())
+        self.scene.play(*reset_animations)
+
+        self.scene.play(pov_block.animate.set_stroke_color(YELLOW).set_stroke_width(6))
+
+        # color the past
+        coloring_animations = []
+        for block, is_blue in pov_block.ghostdag.local_blue_pov.items():
+            if is_blue:
+                coloring_animations.append(
+                    block.animate.set_fill_color(PURE_BLUE)
+                )
+            else:
+                coloring_animations.append(
+                    block.animate.set_fill_color(PURE_RED)
+                )
+
+        if coloring_animations:
+            self.scene.play(*coloring_animations)
+
+    def reset_visual_dag(self):
+        """reset all blocks in the DAG to appear as they were created"""
+
+        reset_animations = []
+        for block in self.all_blocks:
+            reset_animations.append(
+                block.animate.reset_block()
+            )
+
+        if reset_animations:
+            self.scene.play(*reset_animations)
 
     def show_ghostdag(self, pov_block: KaspaLogicalBlock):
         """Show ghostdag."""

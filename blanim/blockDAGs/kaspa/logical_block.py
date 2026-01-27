@@ -323,7 +323,7 @@ class KaspaLogicalBlock:
         to_visit = [self]
 
         while to_visit:
-            current = to_visit.pop()
+            current = to_visit.pop(0)
             for parent in current.parents:
                 if parent not in past:
                     past.add(parent)
@@ -767,7 +767,7 @@ class BlockAnimationBuilder(AnimationGroup):
             self._animations_by_mobject[self.block.visual_block.square] = \
                 self.block.visual_block.square.animate
 
-            # Chain individual property resets
+        # Chain individual property resets
         self._animations_by_mobject[self.block.visual_block.square] = \
             self._animations_by_mobject[self.block.visual_block.square] \
                 .set_fill(color=self.block.visual_block.creation_block_fill_color) \
@@ -812,7 +812,7 @@ class VirtualKaspaBlock(KaspaLogicalBlock):
 
         # Initialize with calculated position
         super().__init__(
-            name="__virtual__",
+            name="V",
             parents=tips,
             position=(x_position, y_position),
             config=v_config

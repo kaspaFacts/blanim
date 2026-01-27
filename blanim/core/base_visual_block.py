@@ -45,6 +45,7 @@ class BaseVisualBlock(VGroup):
 
         self.creation_block_stroke_color = config.stroke_color
         self.creation_block_stroke_width = config.stroke_width
+        self.creation_block_opacity = config.fill_opacity
 
         self.creation_block_label = label_text
 

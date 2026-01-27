@@ -1,4 +1,5 @@
 # blanim/examples/kaspa_examples.py
+import hashlib
 
 from blanim import *
 
@@ -587,6 +588,181 @@ class BlockComparisonScene(HUD2DScene):
         )
 
         self.wait(3)
+
+
+class MerkleRootConstruction(HUD2DScene):
+    def construct(self):
+        # Phase 1: Build logical tree structure (no animation)
+        transactions = [
+            "Tx0: Alice -> Bob: 1 BTC",
+            "Tx1: Bob -> Charlie: 0.5 BTC",
+            "Tx2: Charlie -> David: 0.3 BTC",
+            "Tx3: David -> Eve: 0.2 BTC"
+        ]
+
+        tx_hashes = [hashlib.sha256(tx.encode()).hexdigest()[:8] for tx in transactions]
+
+        # Build tree structure logically first
+        tree_structure = self.build_merkle_tree(tx_hashes)
+
+        # Phase 2: Animate construction bottom-up
+        self.animate_merkle_construction(tree_structure)
+
+    def build_merkle_tree(self, tx_hashes):
+        """Build the complete tree structure and return all nodes organized by level."""
+        level_height = 2.5  # Increased for better spacing
+        node_spacing = 3
+
+        # Create leaf nodes
+        leaf_nodes = []
+        for i, hash_text in enumerate(tx_hashes):
+            x = (i - len(tx_hashes) / 2 + 0.5) * node_spacing
+            node = self.create_styled_hash_node(hash_text, f"Tx{i}")
+            node.move_to([x, -2, 0])
+            leaf_nodes.append(node)
+
+            # Build tree structure
+        all_levels = [leaf_nodes]
+        current_level = leaf_nodes
+
+        while len(current_level) > 1:
+            next_level = []
+            for i in range(0, len(current_level), 2):
+                if i + 1 < len(current_level):
+                    parent = self.create_parent_node(current_level[i], current_level[i + 1])
+                else:
+                    parent = self.create_parent_node(current_level[i], current_level[i])
+                next_level.append(parent)
+
+                # Position next level - FIXED: use -2 as base
+            y = -2 + len(all_levels) * level_height
+            for i, node in enumerate(next_level):
+                x = (i - len(next_level) / 2 + 0.5) * node_spacing * 1.5
+                node.move_to([x, y, 0])
+
+            all_levels.append(next_level)
+            current_level = next_level
+
+        return all_levels
+
+    def animate_merkle_construction(self, tree_structure):
+        """Animate the already-built tree structure."""
+        # Create leaf nodes
+        self.play(*[Create(node) for node in tree_structure[0]])
+        self.wait(1)
+
+        # Animate each level
+        for level_idx in range(1, len(tree_structure)):
+            level = tree_structure[level_idx]
+            prev_level = tree_structure[level_idx - 1]
+
+            # Animate each parent node individually
+            for i, node in enumerate(level):
+                child1_idx = i * 2
+                child2_idx = min(i * 2 + 1, len(prev_level) - 1)
+
+                # Do copy animation, then immediately create parent
+                self.animate_hashing_with_copy(
+                    prev_level[child1_idx],
+                    prev_level[child2_idx],
+                    node
+                )
+                self.play(Create(node))
+
+            self.wait(0.5)
+
+            # Highlight final root
+        root = tree_structure[-1][0]
+        self.play(
+            root.animate.set_color(GOLD).set_stroke_width(4),
+            Indicate(root, scale_factor=1.2)
+        )
+
+        # Add title
+        title = Text("Merkle Root", font_size=36, color=GOLD)
+        title.to_edge(UP)
+        self.play(Write(title))
+        self.wait(2)
+
+    def animate_hashing_with_copy(self, left, right, parent):
+        """Create copies that move up and merge to form parent."""
+        # Create copies with different colors
+        left_copy = left.copy().set_color(YELLOW).set_opacity(0.8)
+        right_copy = right.copy().set_color(YELLOW).set_opacity(0.8)
+
+        # Position copies slightly offset for visibility
+        left_copy.move_to(left.get_center())
+        right_copy.move_to(right.get_center())
+
+        # Animate copies moving upward and merging
+        self.play(
+            Create(left_copy),
+            Create(right_copy),
+            run_time=0.3
+        )
+
+        # Move copies toward parent position
+        self.play(
+            left_copy.animate.move_to(parent.get_center() + LEFT * 0.3),
+            right_copy.animate.move_to(parent.get_center() + RIGHT * 0.3),
+            run_time=0.5
+        )
+
+        # Merge and fade out - FIXED: removed radius parameter
+        self.play(
+            FadeOut(left_copy),
+            FadeOut(right_copy),
+            Flash(parent.get_center(), color=YELLOW),  # Removed radius=0.5
+            run_time=0.3
+        )
+
+    def create_styled_hash_node(self, hash_text, label):
+        """Create a white rounded square node with hash and label."""
+        # Main square with white stroke and rounded corners
+        square = Rectangle(
+            width=3,
+            height=2,
+            stroke_color=WHITE,
+            stroke_width=3,
+            fill_opacity=0.1,
+            color=BLUE
+        )
+        square.round_corners(radius=0.3)
+
+        # Hash text inside square (centered)
+        hash_mob = Text(hash_text, font_size=16, color=WHITE)
+        hash_mob.move_to(square.get_center())
+
+        # Label inside square, near upper edge and centered
+        label_mob = Text(label, font_size=14, color=WHITE)
+        # Position at upper edge but slightly inside
+        label_y = square.get_top()[1] - 0.3  # 0.3 units down from top edge
+        label_mob.move_to([square.get_center()[0], label_y, 0])
+
+        # Group everything
+        group = VGroup(square, hash_mob, label_mob)
+        return group
+
+    def create_parent_node(self, left_child, right_child):
+        """Create a parent hash node from two children."""
+        # Extract hash text from children (index 1 is the hash text in VGroup)
+        left_hash = left_child[1].text
+        right_hash = right_child[1].text
+        combined_hash = f"H({left_hash}+{right_hash})"[:8]
+
+        parent = self.create_styled_hash_node(combined_hash, "Hash")
+        return parent
+
+    def animate_hashing(self, left, right, parent):
+        # Show data flowing upward
+        left_copy = left.copy().set_color(YELLOW)
+        right_copy = right.copy().set_color(YELLOW)
+
+        self.play(
+            left_copy.animate.move_to(parent.get_center()),
+            right_copy.animate.move_to(parent.get_center()),
+            FadeOut(left_copy), FadeOut(right_copy)
+        )
 
 ####################
 # Kaspa Specific Examples
@@ -1760,66 +1936,73 @@ class GHOSTDAGLinearOrdering(HUD2DScene):
         caption_time = 1.0
 
         self.wait(1)
-        self.narrate("PHANTOM GHOSTDAG k = 3 (fig 3) - Virtual Block", run_time=caption_time)
+        self.narrate("PHANTOM GHOSTDAG k = 3 (fig 3) - Blue-Red", run_time=caption_time)
 
         block_gen = dag.add_block_with_params("Gen", None, "Gen", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
+#        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.destroy_virtual_block()
 
         block_b = dag.add_block_with_params("B", ["Gen"], "B", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
+#        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.destroy_virtual_block()
 
         block_c = dag.add_block_with_params("C", ["Gen"], "C", 1, stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
+#        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.destroy_virtual_block()
 
         block_d = dag.add_block_with_params("D", ["Gen"], "D", 0, stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
+#        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.destroy_virtual_block()
 
         block_e = dag.add_block_with_params("E", ["Gen"], "E", 2, stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
+#        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.destroy_virtual_block()
 
         block_f = dag.add_block_with_params("F", ["B", "C"], "F", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.add_virtual_to_scene()
+#        dag.show_ghostdag(virtual)
+#        virtual = dag.destroy_virtual_block()
 
         block_h = dag.add_block_with_params("H", ["D", "C", "E"], "H", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.add_virtual_to_scene()
+#        dag.show_ghostdag(virtual)
+#        virtual = dag.destroy_virtual_block()
 
         block_i = dag.add_block_with_params("I", ["E"], "I", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.add_virtual_to_scene()
+#        dag.show_ghostdag(virtual)
+#        virtual = dag.destroy_virtual_block()
 
         block_j = dag.add_block_with_params("J", ["F", "H"], "J", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.add_virtual_to_scene()
+#        dag.show_ghostdag(virtual)
+#        virtual = dag.destroy_virtual_block()
 
         block_k = dag.add_block_with_params("K", ["B", "H", "I"], "K", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.add_virtual_to_scene()
+#        dag.show_ghostdag(virtual)
+#        virtual = dag.destroy_virtual_block()
 
         block_l = dag.add_block_with_params("L", ["I", "D"], "L", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
-        virtual = dag.destroy_virtual_block()
+#        virtual = dag.add_virtual_to_scene()
+#        dag.show_ghostdag(virtual)
+#        virtual = dag.destroy_virtual_block()
 
         block_m = dag.add_block_with_params("M", ["K", "F"], "M", stack_to_bottom=False)
         virtual = dag.add_virtual_to_scene()
-        dag.show_ghostdag(virtual)
+#        dag.show_ghostdag(virtual)
+
+        for block in dag.all_blocks:
+            if block.parents:  # Genesis has no parents
+                dag.show_blue_red_pov(block)
+                self.caption(f"Blue-Red Past from Block {block.name}")
+                self.wait(4)
+                self.clear_caption()
 
 #        self.caption("GHOSTDAG: Virtual PoV is the nodes PoV", run_time=caption_time)
         self.wait(animation_wait_time)
