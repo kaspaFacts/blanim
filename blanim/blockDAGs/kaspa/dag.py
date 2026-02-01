@@ -1771,6 +1771,10 @@ class KaspaDAG:
         - Invalid block names are logged as warnings and ignored
         - Uses config.line_stroke_opacity for restored line opacity
         """
+        # Default to all blocks if none specified
+        if not blocks:
+            blocks = self.all_blocks
+
         # Step 1: Flatten mixed arguments and resolve blocks
         blocks_list = []
         for item in blocks:

@@ -7,6 +7,59 @@ from blanim import *
 # Some examples NOT using anything but hud_2d_scene
 ####################
 
+class ZChainedBecomeExample(Scene):
+    def construct(self):
+        # Create initial text
+        initial_text = Text("init", font_size=48, color=WHITE)
+        self.add(initial_text)
+
+        # Create target text and explicitly set properties
+        target_text = Text("Hello Manim! Long String!", font_size=48, color=WHITE)
+        target_text.set_color(RED)  # Set color
+        target_text.set_fill(opacity=1)  # Set fill opacity explicitly
+
+        # Create target text and explicitly set properties
+        target_text2 = Text("test", font_size=48, color=WHITE)
+        target_text2.set_color(WHITE)  # Set color
+        target_text2.set_fill(opacity=1)  # Set fill opacity explicitly
+
+        # Use become() with target that has properly set properties
+        self.play(initial_text.animate.become(target_text))
+        self.play(initial_text.animate.set_opacity(0.2))
+        self.play(initial_text.animate.become(target_text2))
+        self.play(initial_text.animate.set_opacity(0.2))
+        self.play(initial_text.animate.become(target_text))
+        self.play(initial_text.animate.set_opacity(0.2))
+        self.play(initial_text.animate.become(target_text2))
+        self.play(initial_text.animate.set_opacity(0.2))
+        self.play(initial_text.animate.become(target_text))
+        self.play(initial_text.animate.set_opacity(0.2))
+        self.wait(1)
+
+
+class ZChainedBecomeSquareExample(Scene):
+    def construct(self):
+        # Create initial square
+        initial_square = Square(fill_color=RED, fill_opacity=1.0, side_length=2)
+        self.add(initial_square)
+
+        # Create target squares with different properties
+        target_square = Square(fill_color=BLUE, fill_opacity=1.0, side_length=3)
+        target_square2 = Square(fill_color=GREEN, fill_opacity=1.0, side_length=2)
+
+        # Same sequence as your text example
+        self.play(initial_square.animate.become(target_square))
+        self.play(initial_square.animate.set_opacity(opacity=0.2))
+        self.play(initial_square.animate.become(target_square2))
+        self.play(initial_square.animate.set_opacity(opacity=0.2))
+        self.play(initial_square.animate.become(target_square))
+        self.play(initial_square.animate.set_opacity(opacity=0.2))
+        self.play(initial_square.animate.become(target_square2))
+        self.play(initial_square.animate.set_opacity(opacity=0.2))
+        self.play(initial_square.animate.become(target_square))
+        self.play(initial_square.animate.set_opacity(opacity=0.2))
+        self.wait(1)
+
 class BlockComparisonScene(HUD2DScene):
     def __init__(self):
         super().__init__()
@@ -467,6 +520,7 @@ class BlockComparisonScene(HUD2DScene):
         # Define header fields - Kaspa (white for common, yellow for unique)
         # Format: (field_text, color)
         kaspa_fields = [
+            ("hash:", WHITE),  # Common
             ("version:", WHITE),  # Common
             ("parents_by_level:", WHITE),  # Kaspa-hashchain
             ("hash_merkle_root:", WHITE),  # Common
@@ -1936,7 +1990,8 @@ class GHOSTDAGLinearOrdering(HUD2DScene):
         caption_time = 1.0
 
         self.wait(1)
-        self.narrate("PHANTOM GHOSTDAG k = 3 (fig 3) - Blue-Red", run_time=caption_time)
+        self.narrate("PHANTOM GHOSTDAG (fig 3) - Confirmations", run_time=caption_time)
+        self.caption("First Draft", run_time=caption_time)
 
         block_gen = dag.add_block_with_params("Gen", None, "Gen", stack_to_bottom=False)
 #        virtual = dag.add_virtual_to_scene()
@@ -1984,25 +2039,72 @@ class GHOSTDAGLinearOrdering(HUD2DScene):
 #        virtual = dag.destroy_virtual_block()
 
         block_k = dag.add_block_with_params("K", ["B", "H", "I"], "K", stack_to_bottom=False)
+#        self.play(block_j.visual_block.change_label(" "))
 #        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
 #        virtual = dag.destroy_virtual_block()
 
         block_l = dag.add_block_with_params("L", ["I", "D"], "L", stack_to_bottom=False)
+#        self.play(block_j.visual_block.change_label("test"))
 #        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
 #        virtual = dag.destroy_virtual_block()
 
         block_m = dag.add_block_with_params("M", ["K", "F"], "M", stack_to_bottom=False)
-        virtual = dag.add_virtual_to_scene()
+#        virtual = dag.add_virtual_to_scene()
 #        dag.show_ghostdag(virtual)
 
-        for block in dag.all_blocks:
-            if block.parents:  # Genesis has no parents
-                dag.show_blue_red_pov(block)
-                self.caption(f"Blue-Red Past from Block {block.name}")
-                self.wait(4)
-                self.clear_caption()
+        animate_labels = []
+        for block in dag.fade_except_future(block_b):
+            if block == block_b:
+                animate_labels.append(block.animate.set_label_text("TX").set_stroke_color(YELLOW).set_stroke_width(6))
+            else:
+                animate_labels.append(block.animate.set_label_text(1))
+        self.play(*animate_labels)
+        self.wait(animation_wait_time)
+
+        self.play(*[block.animate.reset_block() for block in dag.all_blocks])
+
+        animate_labels = []
+        for block in dag.fade_except_future(block_c, with_unfade=True):
+            if block == block_c:
+                animate_labels.append(block.animate.set_label_text("TX").set_stroke_color(YELLOW).set_stroke_width(6))
+            else:
+                animate_labels.append(block.animate.set_label_text(1))
+        self.play(*animate_labels)
+        self.wait(animation_wait_time)
+
+        self.play(*[block.animate.reset_block() for block in dag.all_blocks])
+
+        animate_labels = []
+        for block in dag.fade_except_future(block_d, with_unfade=True):
+            if block == block_d:
+                animate_labels.append(block.animate.set_label_text("TX").set_stroke_color(YELLOW).set_stroke_width(6))
+            else:
+                animate_labels.append(block.animate.set_label_text(1))
+        self.play(*animate_labels)
+        self.wait(animation_wait_time)
+
+        self.play(*[block.animate.reset_block() for block in dag.all_blocks])
+
+        animate_labels = []
+        for block in dag.fade_except_future(block_e, with_unfade=True):
+            if block == block_e:
+                animate_labels.append(block.animate.set_label_text("TX").set_stroke_color(YELLOW).set_stroke_width(6))
+            else:
+                animate_labels.append(block.animate.set_label_text(1))
+        self.play(*animate_labels)
+        self.wait(animation_wait_time)
+
+        self.play(*[block.animate.reset_block() for block in dag.all_blocks])
+        dag.unfade_blocks(dag.all_blocks)
+
+        # for block in dag.all_blocks:
+        #     if block.parents:  # Genesis has no parents
+        #         dag.show_blue_red_pov(block)
+        #         self.caption(f"Blue-Red Past from Block {block.name}")
+        #         self.wait(4)
+        #         self.clear_caption()
 
 #        self.caption("GHOSTDAG: Virtual PoV is the nodes PoV", run_time=caption_time)
         self.wait(animation_wait_time)

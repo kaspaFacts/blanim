@@ -93,19 +93,22 @@ class BaseVisualBlock(VGroup):
 
     def _get_label(self, text: str) -> Text:
         if not text or text.isspace():
-            text = "\u200B"  # Zero-width space maintains position #TODO verify(this does not appear to maintain position)
+            new_label = Text(
+                "00000",
+                font_size=0.1,
+                color=BLACK,
+                opacity=0,
+            )
+        else:
+            new_label = Text(
+                text,
+                font_size=self.config.label_font_size,
+                color=self.config.label_color
+            )
 
-        new_label = Text(
-            text,
-            font_size=self.config.label_font_size,
-            color=self.config.label_color
-        )
         new_label.move_to(self.square.get_center())
         return new_label
 
-#TODO creates label by default but setting "" or " " breaks positioning of get_center on vgroup, figure out how to create invisible label that does not break positioning,
-#   similar to narrate/caption  (Pretty sure positioning is fixed by overriding get_center() to return center of square, need to test label after setting to empty)
-    # TODO CREATING a block with an empty label also breaks positioning for when labels are changed.
     def create_with_label(self):
 
         run_time = self.config.create_run_time
@@ -131,7 +134,6 @@ class BaseVisualBlock(VGroup):
         self._label_text = text
         return Transform(self.label, new_label, run_time=run_time)
 
-    #TODO this is used in Bitcoin DAG only, REMOVE/REPLACE with create with label for consitency?
     def create_with_lines(self):
         """Returns AnimationGroup of block + label + lines creation."""
         run_time = self.config.create_run_time

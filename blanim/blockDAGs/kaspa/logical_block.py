@@ -4,8 +4,9 @@ from __future__ import annotations
 
 __all__ = ["KaspaLogicalBlock", "VirtualKaspaBlock"]
 
+import hashlib
 import secrets
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 
 from manim import ParsableManimColor, AnimationGroup, Animation
 
@@ -20,12 +21,103 @@ if TYPE_CHECKING:
 @dataclass
 class GhostDAGData:
     """GHOSTDAG consensus data for a block."""
-    blue_score: int = 0  # Total blue work in past cone
-    unordered_mergeset: List['KaspaLogicalBlock'] = field(default_factory=list)
-    blue_anticone: Set['KaspaLogicalBlock'] = field(default_factory=set)
+    blue_score: int = 0  # Cumulative blue score (sum of blue scores) in this block's past cone
+    unordered_mergeset: List['KaspaLogicalBlock'] = field(default_factory=list)  # Blocks in this block's mergeset (unordered for visualization)
+    blue_anticone: Set['KaspaLogicalBlock'] = field(default_factory=set)  # Blocks in this block's blue anticone (conflicting blocks)
 
     # NEW: Store local POV - blue status of all blocks evaluated from this block's perspective
-    local_blue_pov: Dict['KaspaLogicalBlock', bool] = field(default_factory=dict)
+    local_blue_pov: Dict['KaspaLogicalBlock', bool] = field(default_factory=dict)  # Blue status lookup from this block's POV
+
+# TODO working on adding data to blocks, data types are not correct, MUST review structure and dataclasses before attempting to populate
+@dataclass
+class HeaderData:
+    """Kaspa block header data structure."""
+    hash: str = ""  # Block hash (identifier)
+    version: int = 1  # Block version number
+    parents_by_level: List[List[str]] = field(default_factory=list)  # Multi-level parent structure: level 0 = direct parents, higher levels = merge mining parents
+    hash_merkle_root: str = ""  # Merkle root of all transactions in the block
+    accepted_id_merkle_root: str = ""  # Merkle root of accepted transaction IDs (KIP-15)
+    utxo_commitment: str = ""  # Commitment to the UTXO set after processing this block
+    timestamp: int = 0  # Block creation timestamp (milliseconds since epoch)
+    bits: int = 0  # Compact difficulty target (encoded difficulty)
+    nonce: int = 0  # Nonce used for proof-of-work
+    daa_score: int = 0  # Difficulty Adjustment Algorithm score
+    blue_work: str = ""  # Cumulative blue work (proof-of-work) in this block's past cone
+    blue_score: int = 0  # Blue score for this block
+    pruning_point: str = ""  # Hash of the pruning point at block creation
+
+
+@dataclass
+class TransactionOutput:
+    """Transaction output that can be spent by future transactions."""
+    value: int = 0  # Output value in sompi (smallest unit Kaspa unit)
+    script_public_key: str = ""  # Locking script that defines spending conditions
+    output_index: int = 0  # Index of this output within the transaction
+
+@dataclass
+class TransactionOutpoint:
+    """Represents a Kaspa transaction outpoint - reference to a specific transaction output."""
+    transaction_id: str = ""  # Hash of the transaction containing the output
+    index: int = 0  # Index of the output within that transaction
+
+    def __str__(self) -> str:
+        return f"{self.transaction_id}:{self.index}"
+
+@dataclass
+class TransactionInput:
+    """Transaction input that references a previous transaction output."""
+    previous_outpoint: TransactionOutpoint = field(default_factory=TransactionOutpoint)
+    signature_script: bytes = b""
+    sequence: int = 0
+    sig_op_count: int = 0
+
+@dataclass
+class TransactionData:
+    """Kaspa transaction data structure with real transaction references."""
+    version: int = 1  # Transaction version
+    inputs: List[TransactionInput] = field(default_factory=list)  # List of transaction inputs
+    outputs: List[TransactionOutput] = field(default_factory=list)  # List of transaction outputs
+    lock_time: int = 0  # Lock time (block height or timestamp before which transaction is invalid)
+    subnetwork_id: str = ""  # Subnetwork identifier (0 for main network)
+    payload: bytes = b""  # Arbitrary data payload
+    mass: int = 0  # Transaction mass (storage weight, KIP-0009)
+    gas: int = 0  # Gas field (must be 0 in current Kaspa)
+
+    @property
+    def tx_hash(self) -> str:
+        """Generate deterministic hash for transaction identification."""
+        content = (
+            f"{self.version}"
+            f"{len(self.inputs)}"
+            f"{len(self.outputs)}"
+            f"{self.lock_time}"
+            f"{self.subnetwork_id}"
+            f"{self.gas}"
+            f"{len(self.payload)}"
+        )
+        # Add input data
+        for inp in self.inputs:
+            content += f"{inp.previous_outpoint.transaction_id}{inp.previous_outpoint.index}{inp.sequence}{inp.sig_op_count}"
+            # Add output data
+        for out in self.outputs:
+            content += f"{out.value}{out.script_public_key}"
+
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+@dataclass
+class BlockData:
+    """Complete Kaspa block data structure."""
+    header: HeaderData  # Block header containing metadata
+    transactions: List[TransactionData] = field(default_factory=list)  # List of transactions in this block
+    is_header_only: bool = False  # True if only header is available (used during Initial Block Download)
+
+    @property
+    def transaction_count(self) -> int:
+        return len(self.transactions)
+
+    @property
+    def coinbase_transaction(self) -> Optional[TransactionData]:
+        return self.transactions[0] if self.transactions else None
 
 class KaspaLogicalBlock:
     """Kaspa logical block with GHOSTDAG consensus."""
@@ -50,6 +142,8 @@ class KaspaLogicalBlock:
         self.timestamp = timestamp
         # Tie-breaker (instead of actually hashing, just use a random number like a cryptographic hash)
         self.hash = custom_hash if custom_hash is not None else secrets.randbits(32)  # 32-bit random integer to keep prob(collision) = low
+        # Use actual (toy) hash later instead of random
+        #self.hash = custom_hash if custom_hash is not None else self._calculate_block_hash()
 
         # DAG structure (single source of truth)
         self.parents = parents if parents else []
@@ -73,7 +167,7 @@ class KaspaLogicalBlock:
         label_text = custom_label if custom_label is not None else str(self.ghostdag.blue_score)
 
         self._visual = KaspaVisualBlock(
-            label_text=label_text,#TODO update this  NOTE: when passing an empty string, positioning breaks (fixed moving blocks by overriding move_to with only visual.square)
+            label_text=label_text,
             position=position,
             parents=parent_visuals,
             config=self.config
@@ -83,6 +177,28 @@ class KaspaLogicalBlock:
         # Register as child in parents
         for parent in self.parents:
             parent.children.append(self)
+
+        # TODO header could later be used for handling some of this data (currently being duplicated now)
+        # Header data structure
+        self.header = HeaderData()
+
+    def _calculate_block_hash(self) -> str:
+        """Calculate deterministic block hash."""
+        content = (
+            f"{self.name}"
+            f"{self.timestamp}"
+            f"{len(self.parents) if self.parents else 0}"
+        )
+        # Add parent hashes
+        if self.parents:
+            for parent in self.parents:
+                content += str(parent.hash)
+
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+    def get_header_fields(self):
+        """Return header field names using official API"""
+        return [f"{field_info.name}:" for field_info in fields(self.header)]
 
     @staticmethod
     def _get_sort_key(block: 'KaspaLogicalBlock') -> tuple:
@@ -559,6 +675,8 @@ class KaspaLogicalBlock:
 
         return all_pov
 
+
+
     ########################################
     # Accessing Visual Block
     ########################################
@@ -759,7 +877,7 @@ class BlockAnimationBuilder(AnimationGroup):
             self._animations_by_mobject[self.block.visual_block.label].set_color(color)
         return self
 
-    # TODO fully test this
+    # TODO appears to work, but need to add methods for setting block/line opacity during or without label change
     def reset_block(self) -> 'BlockAnimationBuilder':
         """Reset all block properties to creation-time values."""
         # Reset square properties individually
